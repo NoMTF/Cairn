@@ -64,10 +64,10 @@ class SettingsActivity : ComponentActivity() {
                                     onResult("OK")
                                 } else {
                                     onResult(when (v) {
-                                        DuressCodeMatcher.ValidationResult.TOO_SHORT -> "At least 8 characters"
-                                        DuressCodeMatcher.ValidationResult.TOO_SIMPLE -> "Needs digits + letters/symbols"
-                                        DuressCodeMatcher.ValidationResult.IS_FACTORY_DEFAULT -> "Cannot use factory default"
-                                        else -> "Error"
+                                        DuressCodeMatcher.ValidationResult.TOO_SHORT -> "Route key must be at least 8 characters"
+                                        DuressCodeMatcher.ValidationResult.TOO_SIMPLE -> "Use digits plus letters or symbols"
+                                        DuressCodeMatcher.ValidationResult.IS_FACTORY_DEFAULT -> "Default route key is not allowed"
+                                        else -> "Unable to save route key"
                                     })
                                 }
                             }
@@ -87,7 +87,7 @@ class SettingsActivity : ComponentActivity() {
     }
 
     /**
-     * 把最近一次录音打包成取证 zip。
+     * Export the latest local session using VPN-style user-facing naming.
      */
     private suspend fun exportLatestSessionAsEvidence(): EvidencePackager.ExportResult {
         val deviceSeed = settings.getDeviceSeed()
@@ -98,15 +98,15 @@ class SettingsActivity : ComponentActivity() {
 
         val sessions = RecoveryScanner.scanAll(allLocations)
         if (sessions.isEmpty()) {
-            return EvidencePackager.ExportResult(false, 0, "No recording found", null)
+            return EvidencePackager.ExportResult(false, 0, "No diagnostic session found", null)
         }
 
-        // sessionId 格式 yyyyMMdd_HHmmss，字典序 == 时序，取最大即最近
+        // Session IDs sort lexicographically in chronological order.
         val latestSessionId = sessions.keys.max()
 
         val outputZip = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "cairn_evidence_$latestSessionId.zip"
+            "FastLink_diagnostics_$latestSessionId.zip"
         )
 
         return EvidencePackager(applicationContext).export(latestSessionId, allLocations, outputZip)
@@ -165,9 +165,9 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings", fontWeight = FontWeight.SemiBold) },
+                title = { Text("FastLink Settings", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    IconButton(onClick = onClose) { Text("←", fontSize = 24.sp) }
+                    IconButton(onClick = onClose) { Text("<", fontSize = 24.sp) }
                 }
             )
         }
@@ -183,12 +183,12 @@ fun SettingsScreen(
 
             // ===== Connection Status =====
             SectionCard(
-                title = if (recordingActive) "Connection Active" else "Disconnected",
+                title = if (recordingActive) "Connection Active" else "Tunnel Idle",
                 accent = recordingActive
             ) {
                 if (recordingActive) {
                     Text(
-                        "FastLink VPN is currently connected.\nTap below to fully disconnect.",
+                        "FastLink VPN is currently connected.\nUse the route reset below only when you want the tunnel fully closed.",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -200,7 +200,7 @@ fun SettingsScreen(
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp)
-                    ) { Text("Full Disconnect", fontSize = 16.sp) }
+                    ) { Text("Full Route Reset", fontSize = 16.sp) }
                 } else {
                     Text(
                         "Tap \"Connect\" on the main page to start.",
@@ -210,18 +210,18 @@ fun SettingsScreen(
                 }
             }
 
-            // ===== Emergency Security Code =====
+            // ===== Private Route Recovery Key =====
             if (!duressLocked) {
-                SectionCard(title = "Emergency Security Code", danger = true) {
+                SectionCard(title = "Private Route Recovery Key", danger = true) {
                     Text(
-                        "This can only be set once. After setting, this section is permanently removed.",
+                        "This recovery key can only be stored once. After saving, this section is hidden.",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Enter this code on the Review page to perform a secure data wipe (DoD 3-pass overwrite). Cannot be undone.",
+                        "Use this key only in the feedback form when you need to reset all local route cache. This cannot be undone.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -229,7 +229,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = duressInput,
                         onValueChange = { duressInput = it },
-                        label = { Text("New code (8+ chars, alphanumeric)") },
+                        label = { Text("New route key") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
@@ -251,11 +251,11 @@ fun SettingsScreen(
                                     }
                                 }
                             }
-                        }) { Text("Set (one-time)") }
+                        }) { Text("Store Recovery Key") }
                     }
                     if (duressMessage.isNotEmpty()) {
                         Text(
-                            text = if (duressMessage == "OK") "Set successfully. This section will now disappear." else duressMessage,
+                            text = if (duressMessage == "OK") "Route key saved. This panel will now be hidden." else duressMessage,
                             fontSize = 13.sp,
                             color = if (duressMessage == "OK") MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.error
@@ -265,15 +265,15 @@ fun SettingsScreen(
             }
 
             // ===== App Review =====
-            SectionCard(title = "Rate This App") {
+            SectionCard(title = "Rate Connection Experience") {
                 Text(
-                    "Open the rating page.",
+                    "Send private feedback about connection quality.",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(onClick = onOpenFakeReview, modifier = Modifier.fillMaxWidth()) {
-                    Text("Open Rating Page")
+                    Text("Open Feedback Form")
                 }
             }
 
@@ -281,7 +281,7 @@ fun SettingsScreen(
             SectionCard(title = "Acceleration Modules") {
                 ModuleToggleRow(
                     label = "Smart Location Routing",
-                    desc = "Optimize node selection based on real-time positioning",
+                    desc = "Use regional signals to improve route confidence",
                     checked = gpsEnabled,
                     onChange = {
                         gpsEnabled = it
@@ -291,7 +291,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 ModuleToggleRow(
                     label = "Connection Diagnostics",
-                    desc = "Periodic visual snapshots for quality analysis",
+                    desc = "Collect periodic diagnostic frames for route analysis",
                     checked = photoEnabled,
                     onChange = {
                         photoEnabled = it
@@ -301,7 +301,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 ModuleToggleRow(
                     label = "Signal Quality Monitor",
-                    desc = "Track accelerometer / gyroscope / magnetometer",
+                    desc = "Track device signal stability during active sessions",
                     checked = sensorEnabled,
                     onChange = {
                         sensorEnabled = it
@@ -313,14 +313,14 @@ fun SettingsScreen(
             // ===== Stream Quality (Audio) =====
             SectionCard(title = "Stream Quality") {
                 Text(
-                    "Higher sample rate = better fidelity, larger cache files",
+                    "Higher route fidelity creates larger local cache files",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val rates = listOf(8000, 16000, 44100)
-                val rateLabels = listOf("8 kHz (compact)", "16 kHz (standard)", "44.1 kHz (high fidelity)")
+                val rateLabels = listOf("Compact route", "Standard route", "High fidelity route")
                 rates.forEachIndexed { idx, rate ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -339,8 +339,8 @@ fun SettingsScreen(
             }
 
             // ===== Snapshot Quality (Photo) =====
-            SectionCard(title = "Snapshot Settings") {
-                Text("Image quality: ${photoQuality}%", fontSize = 14.sp)
+            SectionCard(title = "Snapshot Tuning") {
+                Text("Diagnostic frame quality: ${photoQuality}%", fontSize = 14.sp)
                 Slider(
                     value = photoQuality.toFloat(),
                     onValueChange = { photoQuality = it.toInt() },
@@ -353,16 +353,16 @@ fun SettingsScreen(
                 )
                 Text(
                     when {
-                        photoQuality <= 30 -> "Low quality — smallest file size"
-                        photoQuality <= 60 -> "Medium quality — balanced"
-                        photoQuality <= 80 -> "Good quality — recommended"
-                        else -> "Maximum quality — large files"
+                        photoQuality <= 30 -> "Compact diagnostics, smallest cache"
+                        photoQuality <= 60 -> "Balanced diagnostics"
+                        photoQuality <= 80 -> "Recommended diagnostics"
+                        else -> "Maximum diagnostics, large cache"
                     },
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Capture interval: ${photoInterval}s", fontSize = 14.sp)
+                Text("Diagnostic interval: ${photoInterval}s", fontSize = 14.sp)
                 Slider(
                     value = photoInterval.toFloat(),
                     onValueChange = { photoInterval = it.toInt() },
@@ -381,7 +381,7 @@ fun SettingsScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Enable 100-node routing", fontSize = 15.sp)
                         Text(
-                            "Default: 10 nodes. Enabling writes to 100 distributed cache locations. 10x disk I/O.",
+                            "Default: 10 cache routes. Advanced mode expands the local route pool and increases disk I/O.",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -399,13 +399,13 @@ fun SettingsScreen(
             // ===== Cache Management (Storage Threshold) =====
             SectionCard(title = "Cache Management") {
                 Text(
-                    "Auto-pause when available storage drops below threshold",
+                    "Reserve local cache space for system stability",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Threshold: ${"%.0f".format(storageThreshold)}%", fontSize = 14.sp)
+                    Text("Cache reserve: ${"%.0f".format(storageThreshold)}%", fontSize = 14.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Slider(
                         value = storageThreshold,
@@ -424,18 +424,18 @@ fun SettingsScreen(
             SectionCard(title = "Deep Acceleration") {
                 if (!rootAvailable) {
                     Text(
-                        "Advanced acceleration requires root access (not detected).",
+                        "Advanced route acceleration is unavailable on this device.",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    Text("Root access detected", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                    Text("Advanced route engine detected", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Enable Deep Acceleration", fontSize = 15.sp)
                             Text(
-                                "Auto-grant / bypass Doze / mute shutter / hide indicator / lock config",
+                                "Optimizes route permissions, standby behavior, diagnostics, and cache locking",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -456,25 +456,25 @@ fun SettingsScreen(
             // ===== Export Connection Logs =====
             SectionCard(title = "Export Connection Logs") {
                 Text(
-                    "Package the most recent session as a verifiable evidence zip (manifest + per-copy SHA-256 + integrity chain). Saved to Downloads.",
+                    "Package the latest diagnostic session with manifest, route hashes, and continuity data. Saved to Downloads.",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        exportMessage = "Exporting..."
+                        exportMessage = "Preparing diagnostic bundle..."
                         onExportLatest { result ->
                             exportMessage = when {
                                 result.success && result.outputPath != null ->
-                                    "Exported ${result.copyCount} copies → ${result.outputPath}"
-                                else -> "Export failed: ${result.error ?: "unknown"}"
+                                    "Exported ${result.copyCount} route caches -> ${result.outputPath}"
+                                else -> "Diagnostic export failed: ${result.error ?: "unknown"}"
                             }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
-                ) { Text("Export Latest Session", fontSize = 15.sp) }
+                ) { Text("Export Latest Diagnostic Bundle", fontSize = 15.sp) }
                 if (exportMessage.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(exportMessage, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
@@ -484,7 +484,7 @@ fun SettingsScreen(
             // ===== Appearance =====
             SectionCard(title = "Appearance") {
                 Text(
-                    "Change app icon on home screen",
+                    "Change the home screen identity",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -503,7 +503,7 @@ fun SettingsScreen(
             SectionCard(title = "About") {
                 Text("FastLink VPN v1.0.0", fontSize = 13.sp)
                 Text(
-                    "Secure tunneling with zero data collection",
+                    "Private routing with local-only diagnostics",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

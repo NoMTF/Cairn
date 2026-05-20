@@ -13,18 +13,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * 取证包导出器。
- *
- * 把一次录音的所有相关文件打包成 zip：
- *   recording.wav         — 音频
- *   recording.gps         — GPS 轨迹
- *   recording.sensor      — 传感器数据
- *   IMG_*.jpg             — 后台静默照片
- *   integrity_chain.csv   — 哈希链
- *   manifest.json         — 元数据 + 全部 100 副本的 SHA-256
- *   README.md             — 验证步骤说明
- *
- * 律师/法庭用附带的 verify_evidence.py 在任何机器上独立验证。
+ * Packages one local session with its manifest and sidecars for later verification.
  */
 class EvidencePackager(private val context: Context) {
 
@@ -33,7 +22,7 @@ class EvidencePackager(private val context: Context) {
     }
 
     /**
-     * 导出某次录音的取证包到指定文件
+     * Export a session package to the requested zip file.
      */
     fun export(
         sessionId: String,
@@ -41,13 +30,12 @@ class EvidencePackager(private val context: Context) {
         outputZip: File
     ): ExportResult {
         try {
-            // 1. 扫描全部位置，找到该 session 的所有副本
+            // Scan all configured locations and collect copies for this session.
             val sessions = RecoveryScanner.scanAll(allLocations)
             val copies = sessions[sessionId] ?: return ExportResult(
                 false, 0, "Session $sessionId not found", null
             )
 
-            // 2. 选择第一份完整副本作为权威数据
             val primaryCopy = copies.firstOrNull { !it.needsRepair }
                 ?: copies.first().also { RecoveryScanner.repairIfNeeded(it) }
 
@@ -55,42 +43,33 @@ class EvidencePackager(private val context: Context) {
                 false, 0, "Source dir not accessible", null
             )
 
-            // 3. 收集相关文件（音频、GPS、传感器、照片）
-            val baseFileName = primaryCopy.file.nameWithoutExtension
             val relatedFiles = sourceDir.listFiles { file ->
                 file.name.contains(sessionId)
             } ?: emptyArray()
 
-            // 4. 计算每个 100 副本的 SHA-256（用于 manifest）
             val copyHashes = copies.associate {
                 it.locationIndex to RecoveryScanner.computeSha256(it.file)
             }
 
-            // 4b. 找到主副本同址的哈希链文件并计算 SHA-256（可选）
             val chainFile = File(sourceDir, primaryCopy.file.nameWithoutExtension + ".chain")
                 .takeIf { it.exists() }
                 ?: sourceDir.listFiles { f -> f.name.endsWith(".chain") && f.name.contains(sessionId) }
                     ?.firstOrNull()
             val chainSha = chainFile?.let { RecoveryScanner.computeSha256(it) }
 
-            // 5. 构建 zip
             outputZip.parentFile?.mkdirs()
             ZipOutputStream(FileOutputStream(outputZip)).use { zos ->
-                // 5a. 添加主要文件
                 for (file in relatedFiles) {
                     addToZip(zos, file, "recording/${file.name}")
                 }
 
-                // 5b. 添加 manifest
                 val manifestJson = buildManifest(sessionId, primaryCopy, copyHashes, chainFile?.name, chainSha)
                 zos.putNextEntry(ZipEntry("manifest.json"))
                 zos.write(manifestJson.toByteArray())
                 zos.closeEntry()
 
-                // 5c. 添加独立检查脚本（打包在 assets 中）
                 addAssetToZip(zos, "decrypt.py", "decrypt.py")
 
-                // 5d. 添加 README
                 zos.putNextEntry(ZipEntry("README.md"))
                 zos.write(buildReadme(sessionId, copies.size, chainFile != null).toByteArray())
                 zos.closeEntry()
@@ -152,37 +131,33 @@ class EvidencePackager(private val context: Context) {
     }
 
     private fun buildReadme(sessionId: String, copyCount: Int, hasChain: Boolean): String {
-        val chainNote = if (hasChain) "- `recording/*.chain` — 每秒一行 SHA-256 哈希链 CSV\n" else ""
+        val chainNote = if (hasChain) "- `recording/*.chain` - SHA-256 continuity chain, one row per audio chunk\n" else ""
         return """
-# Cairn 取证包 — $sessionId
+# FastLink Diagnostic Bundle - $sessionId
 
-## 包含内容
+This package was exported by Cairn / FastLink VPN from local device storage. The app is designed for extreme personal-safety documentation and does not use a network upload path.
 
-- `recording/` — 音频、GPS、传感器、照片
-$chainNote- `manifest.json` — 元数据 + 全部 $copyCount 份副本的 SHA-256
-- `decrypt.py` — 加密容器检查脚本
-- `README.md` — 本文件
+## Contents
 
-## 验证步骤
+- `recording/` - encrypted CNCE audio containers and sidecar files
+$chainNote- `manifest.json` - session metadata and SHA-256 hashes for $copyCount available copies
+- `decrypt.py` - CNCE container inspection helper
+- `README.md` - this file
 
-1. 下载 verify_evidence.py（独立 Python 脚本，开源）
-2. 运行：
+## Verification
+
+1. Use the repository script `verify/verify_evidence.py`.
+2. Run:
    ```
-   python verify_evidence.py <本zip文件>
+   python verify_evidence.py <this-zip-file>
    ```
-3. 验证内容：
-   - 所有文件 SHA-256 与 manifest 中一致
-   - 哈希链未断裂（每个 chunk 的 prev_hash 与上一 chunk 的 current_hash 匹配）
-   - GPS 时间戳连续（间隔 ~1 秒）
-   - 设备指纹一致
+3. The script checks the manifest, primary copy hash, CNCE marker, GPS continuity where present, and hash-chain continuity where present.
 
-## 说明
+## Notes
 
-本录音由 Cairn App 离线生成。
-App 全程无网络权限，所有数据未经过任何远程服务器。
-完整源码：https://github.com/cairn-app/cairn
+Audio is stored in device-bound Android Keystore AES-GCM CNCE containers. `decrypt.py` currently checks container structure; full off-device decryption requires the planned export-password re-encryption flow.
 
-哈希链结构保证：任何对录音的篡改、删除、剪辑均会导致链断裂，可在法庭出示作为不可否认的完整性证明。
+Source repository: https://github.com/NoMTF/Cairn
         """.trimIndent()
     }
 

@@ -1,90 +1,293 @@
 # Cairn
 
-> 一座为遭遇人权侵害、投诉无门的人筑起的「石碑」。
->
-> Cairn /kɛərn/ 源自苏格兰盖尔语，指登山者沿路堆砌的石头标记 ——
-> 每块石头由不同的人留下，历经风雨仍指引后来者方向，纪念走过的旅人。
->
-> 一份录音以多副本物理冗余分散各处，任一份留存即是「证据的标记」。
+> 为没有安全见证人、没有可信网络、也没有第二次机会的人，留下一块离线的证据石标。
 
-## 设计原则
+Cairn 是一个 Android 离线取证录音 App，面向极端个人安全场景设计：被胁迫谈话、被盘问、被拘禁、被家暴或机构性压迫、遭遇抗议现场暴力、投诉无门，或者因为性别身份、性倾向、族裔、宗教、残障、政治表达等身份而遭到针对、威胁、羞辱、驱赶或迫害。
 
-1. **离线第一** —— 不申请 INTERNET 权限，整个 APK 拆开来不存在任何网络代码路径。
-2. **物理冗余** —— 同一份 PCM 流并行写入 10 / 100 处隐蔽位置，各自 fsync。
-3. **崩溃即可读** —— 自己写加密容器，header 可后修复。进程被杀也保已录部分。
-4. **每秒持久化** —— 1 秒为 chunk 边界，强制刷盘，丢失上限 < 1 秒。
-5. **取证链可验证** —— 哈希链 + 时间戳 + 传感器 + GPS + 静默照片。
-6. **代码 100% 开源** —— 默认位置开放在 docs/，App 内部不显示。
-7. **可降级** —— 普通用户开箱即用；进阶用户开极端模式；Root 用户开 Root 增强。
-8. **零摩擦上手** —— 一键授权 + 自动厂商引导，2 分钟从下载到能用。
+它不是云录音机，也不是远程监控工具。Cairn 的核心目标只有一个：当用户在自己的手机上主动开启记录时，证据应尽可能在断网、恐慌、进程被杀、低电量、临时检查和普通删除尝试中保留下来。
 
-## 功能
+App 的前台表现为 **FastLink VPN**。这不是装饰，而是自卫语境下的界面策略：在高压房间里，一个普通的 VPN / 网络加速工具，比一个写着“取证录音”的 App 更容易解释。
 
-### 核心
-- **10 处隐蔽多副本同步写入**（默认）
-- **100 处候选池**（极端模式，用户可勾选启用）
-- **崩溃安全**：WAV header 占位 + sidecar 修复 + 每秒 fsync
-- **每秒 GPS 位置**（sidecar CSV）
-- **后台静默拍照**：Camera2 + 无 Root 关快门音组合技
-- **三轴传感器同步采集**（加速度 / 陀螺 / 磁力计）
-- **通知伪装**：前台服务通知做成 QQ 语音通话样式
-- **七层后台保活**：前台服务 + WakeLock + 电池白名单 + AlarmManager + JobScheduler + 厂商 ROM 引导 + Root 自动化
-- **存储空间保护**：< 10% 自动暂停（阈值可调 1-50%）
+## 适用场景
 
-### 一键授权
-- 普通模式：7 步状态机，约 2 分钟
-- Root 模式：静默授权，约 2 秒
+Cairn 适合用户在自己的设备上，为自己正在经历或亲眼见到的事件做本地记录。
 
-### Root 增强
-- 静默授予全部权限（`pm grant`）
-- bypass Doze（`dumpsys deviceidle whitelist`）
-- 关快门音（`setprop audio.camera.shutter.disable 1`）
-- 关隐私指示器（设备 12+ 的录音绿点、相机橙点）
-- chattr +i 文件锁（普通用户删不掉）
-- 自卸载（核爆后 `pm uninstall --user 0`）
+- 因性别身份、性倾向、外貌表达、亲密关系或家庭控制而被威胁、围堵、审问、羞辱或强制带离。
+- 在学校、单位、医院、收容、拘留、边检、社区或家庭场景中，缺少安全的第三方见证人。
+- 遭遇家暴、跟踪、胁迫控制、职场报复、投诉无门或机构推诿。
+- 记者、抗议者、维权者、志愿者、少数群体成员或普通目击者，在网络不可信或可能被检查手机时，需要离线冗余证据。
 
-### 紧急自救
-- **伪评论暗码引爆**：评论框输入预设暗码 → DoD 3 遍覆写全部副本 + 清数据 + Root 自卸载，UI 显示"感谢反馈"
-- **诱饵录音**：可生成假录音放桌面
-- **应急清空键**：设置中手动核爆
+边界同样清楚：不得把 Cairn 安装到他人设备上，不得用于非法监控，不得绕过当地录音同意法律，不得加入远程控制、云上传、批量部署、静默安装或任何后门。
 
-### 取证导出
-- Zip 取证包：音频 + GPS + 传感器 + 照片 + 哈希链 + manifest + README
-- 独立 Python 验证脚本 `verify/verify_evidence.py`（仅依赖标准库）
+## 表面效果
 
-## 技术栈
+用户打开 App 后看到的是一个完整的 VPN 工具：
 
-- Kotlin + Jetpack Compose + Material 3
-- minSdk 24 / targetSdk 34
-- AudioRecord (PCM) + AES-GCM 分块加密 CNCE 容器
-- Camera2 API + ShutterSilencer 组合技
-- FusedLocationProviderClient
-- libsu (Root)
-- DataStore Preferences
+- 品牌显示为 `FastLink VPN`
+- 主页面有服务器节点、连接按钮、上下行流量和连接时长
+- 点击连接后显示 VPN 已连接
+- 前台通知显示为普通语音通话
+- 设置页全部使用路由、缓存、诊断、加速等 VPN 术语
+- 导出文件名使用 FastLink 诊断包命名
 
-## 关键路径
+真实效果：
 
-- `docs/STORAGE_LOCATIONS.md` — 默认 10 处副本位置（开源公开）
-- `docs/DURESS_CODE_SETUP.md` — 销毁暗码使用指南
-- `verify/verify_evidence.py` — 取证包独立验证脚本
-- `app/src/main/kotlin/com/cairn/app/storage/StorageLocations.kt` — 副本路径源代码
-- `app/src/main/kotlin/com/cairn/app/service/AudioPipeline.kt` — 核心录音管线
-- `app/src/main/kotlin/com/cairn/app/notification/QqCallStyleNotification.kt` — QQ 通话伪装通知
+- 主屏点击连接会启动前台录音服务
+- 主屏点击断开只改变界面状态，不真正停止记录
+- 设置页里的 `Full Route Reset` 才是真正停止入口
+- 录音按 1 秒 chunk 写入本地加密容器
+- 同一 session 默认写入 10 处伪装缓存目录
+- 可选 GPS、传感器、周期性快照 sidecar
+- 导出包包含 manifest、哈希、sidecar 和验证脚本
+- 用户设置过的恢复密钥可在反馈页触发本地清理
 
-## 分发
+## 核心能力
 
-- **F-Droid**（推荐）
-- **GitHub Releases** APK + AAB
-- ❌ Google Play / 国内应用商店：被 `MANAGE_EXTERNAL_STORAGE` + 隐藏行为政策拦截
+- **零网络路径**：不申请 `INTERNET`，当前 merged manifest 不含 `INTERNET` / `ACCESS_NETWORK_STATE`。
+- **本地加密容器**：音频写入 CNCE AES-GCM 分块容器，不再落明文 WAV。
+- **每秒落盘**：1 秒一个 chunk，并强制 flush / fsync，把异常断电或进程被杀造成的数据损失压到约 1 秒。
+- **崩溃修复**：录音中保留 `.len` sidecar，异常退出后可修复 CNCE header。
+- **多副本冗余**：默认 10 个隐蔽缓存路径，极端模式可扩展到 100 个候选路径。
+- **取证上下文**：可同步生成 GPS、传感器和周期性快照 sidecar。
+- **哈希链**：每秒音频 chunk 生成 SHA-256 链，辅助证明连续性。
+- **前台伪装**：主界面像 VPN，通知像通话，设置像网络诊断面板。
+- **紧急清理**：用户自设恢复密钥后，可从反馈页触发本地不可逆清理。
 
-## 风险与提醒
+## 使用指南
 
-- 本工具仅供公民取证 / 自卫记录用途，使用须遵守当地法律。
-- QQ 通知伪装中的图标和文案为**足够差异化的自绘版本**，避免商标直接侵权。
-- Root 是双刃剑 — Root 设备本身安全性低于非 Root，建议用 Magisk。
-- 暗码核爆**不可逆**。出厂默认码开源公开，首次启动**强制**用户改码。
-- 全程零网络权限是设计基石。任何 PR 引入 `INTERNET` 必须独立分支 + README 红字声明。
+1. 构建或安装 APK。
+2. 打开 App，桌面和主界面显示为 `FastLink VPN`。
+3. 按引导完成权限：麦克风、相机、位置、通知、文件管理、电池、精确闹钟等。
+4. 回到主屏，点击大号电源按钮。界面显示 VPN 已连接，实际开始本地记录。
+5. 如果被要求“断开 VPN”，主屏断开只改变可见状态，记录仍会继续。
+6. 真正停止时，进入设置页，点击 `Full Route Reset`。
+7. 需要导出时，使用 `Export Connection Logs` -> `Export Latest Diagnostic Bundle`。
+8. 导出文件在 Downloads 中，命名类似：
+
+```text
+FastLink_diagnostics_<sessionId>.zip
+```
+
+9. 在可信电脑上验证：
+
+```bash
+python verify/verify_evidence.py FastLink_diagnostics_<sessionId>.zip
+```
+
+## 设置项对照表
+
+App 内所有设置项都刻意写成 VPN / 网络工具术语。下面是维护者和审计者需要知道的真实含义。
+
+| App 内可见设置 | 实际功能 |
+|---|---|
+| `Connection Active` / `Tunnel Idle` | 录音前台服务是否正在运行 |
+| `Full Route Reset` | 真正停止录音服务 |
+| `Private Route Recovery Key` | 设置一次性紧急清理暗码 |
+| `New route key` | 输入暗码 |
+| `Store Recovery Key` | 保存暗码 hash，保存后该面板隐藏 |
+| `Rate Connection Experience` | 打开伪反馈页 |
+| `Open Feedback Form` | 进入伪评分 / 反馈页面 |
+| `Acceleration Modules` | 取证 sidecar 功能集合 |
+| `Smart Location Routing` | GPS / 位置 sidecar |
+| `Connection Diagnostics` | 周期性后台快照 sidecar |
+| `Signal Quality Monitor` | 加速度、陀螺仪、磁力计 sidecar |
+| `Stream Quality` | 音频采样率 |
+| `Compact route` | 8 kHz 音频 |
+| `Standard route` | 16 kHz 音频 |
+| `High fidelity route` | 44.1 kHz 音频 |
+| `Snapshot Tuning` | 快照质量和间隔 |
+| `Diagnostic frame quality` | JPEG 快照质量 |
+| `Diagnostic interval` | 快照间隔秒数 |
+| `Multi-Route Redundancy` | 极端多路径副本模式 |
+| `Enable 100-node routing` | 启用最多 100 个候选写入位置 |
+| `Cache Management` | 低存储保护 |
+| `Cache reserve` | 可用空间低于阈值时停止 / 保护写入 |
+| `Deep Acceleration` | Root 增强功能区 |
+| `Enable Deep Acceleration` | 开启 Root 辅助权限、待机、静音、锁定等增强标志 |
+| `Export Connection Logs` | 导出最新取证 session |
+| `Export Latest Diagnostic Bundle` | 打包 zip，包含 manifest、哈希和 sidecar |
+| `Appearance` | 桌面图标伪装 |
+| `FastLink` / `Calculator` | 切换启动器图标身份 |
+
+## 文件与证据结构
+
+每次记录会生成一个 session id，例如：
+
+```text
+20260521_010203
+```
+
+默认写入多个公共存储下的隐藏缓存式目录。每个 active location 可能包含：
+
+```text
+<prefix><sessionId><suffix>          CNCE 加密音频容器
+<prefix><sessionId><suffix>.len      录音中存在的崩溃修复 sidecar
+<prefix><sessionId>.chain            音频哈希链 CSV
+<prefix><sessionId>.gps              位置 CSV
+<prefix><sessionId><suffix>.sensor   传感器 CSV
+IMG_<sessionId>_0001.dat             伪装扩展名的快照 JPEG 数据
+```
+
+干净停止后 `.len` 会被删除；异常退出后，恢复扫描会用它回填 CNCE header。
+
+## 导出包内容
+
+导出的 zip 包通常包含：
+
+```text
+recording/
+manifest.json
+decrypt.py
+README.md
+```
+
+`manifest.json` 记录：
+
+- session id
+- 导出时间
+- 主副本 index
+- 主副本 SHA-256
+- 副本数量
+- 哈希链文件及 SHA-256
+- 全部可读副本 hash
+
+`decrypt.py` 当前用于检查 CNCE 容器结构。由于设备内主密钥来自 Android Keystore，完整离线解密需要后续实现“导出密码重加密”流程。
+
+## 技术架构
+
+| 模块 | 技术 |
+|---|---|
+| 语言 | Kotlin |
+| UI | Jetpack Compose + Material 3 |
+| 构建 | Gradle Kotlin DSL |
+| Android Gradle Plugin | 8.9.1 |
+| Kotlin | 2.0.21 |
+| compileSdk | 36 |
+| minSdk | 24 |
+| targetSdk | 35 |
+| 音频 | AudioRecord PCM |
+| 加密 | Android Keystore + AES-GCM |
+| 位置 | Google Play Services Location |
+| 设置 | AndroidX DataStore Preferences |
+| Root | libsu |
+
+核心源码入口：
+
+- `app/src/main/kotlin/com/cairn/app/ui/MainActivity.kt`
+- `app/src/main/kotlin/com/cairn/app/ui/SettingsActivity.kt`
+- `app/src/main/kotlin/com/cairn/app/service/RecordingService.kt`
+- `app/src/main/kotlin/com/cairn/app/service/AudioPipeline.kt`
+- `app/src/main/kotlin/com/cairn/app/storage/EncryptedChunkWriter.kt`
+- `app/src/main/kotlin/com/cairn/app/storage/IntegrityChain.kt`
+- `app/src/main/kotlin/com/cairn/app/export/EvidencePackager.kt`
+- `app/src/main/kotlin/com/cairn/app/nuke/NukeEngine.kt`
+
+## 构建
+
+需要：
+
+- JDK 17
+- Android SDK
+- API 36 平台
+- 项目内 Gradle wrapper
+
+Windows：
+
+```powershell
+.\gradlew.bat app:check app:assembleRelease
+```
+
+类 Unix shell：
+
+```bash
+./gradlew app:check app:assembleRelease
+```
+
+Debug APK：
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+Release 产物：
+
+```text
+app/build/outputs/apk/release/
+```
+
+正式分发前仍需配置 release signing。
+
+## 验证
+
+项目检查：
+
+```bash
+./gradlew app:check
+python -m py_compile verify/verify_evidence.py verify/decrypt.py app/src/main/assets/decrypt.py
+```
+
+导出包检查：
+
+```bash
+python verify/verify_evidence.py FastLink_diagnostics_<sessionId>.zip
+```
+
+验证脚本会检查 manifest、主副本 hash、CNCE magic、GPS 连续性和哈希链连续性。
+
+## 安全模型与限制
+
+Cairn 能提高离线证据在普通检查、误删、进程死亡、单点路径丢失和低空间风险下的存活率。它不是万能反取证工具。
+
+可以期待：
+
+- 默认无网络上传路径
+- 无远程控制通道
+- 无分析 SDK
+- 本地音频加密
+- 多副本冗余
+- 每秒 fsync
+- 哈希链和 sidecar 辅助验证
+
+必须理解：
+
+- Android Keystore 密钥不可导出，外部完整解密需要后续导出密码功能。
+- 隐藏目录和 `.nomedia` 是伪装，不是安全边界。
+- flash / F2FS / wear leveling 下，多遍覆写只能视为尽力而为。
+- Root 功能依赖设备、ROM、系统策略和用户风险判断。
+- 录音是否合法取决于当地法律和具体场景。
+
+## 维护红线
+
+不要加入：
+
+- `INTERNET` 权限
+- 云上传
+- 远程控制
+- analytics / remote config
+- 批量部署
+- 静默安装
+- 绕过杀软或隐藏进程
+- 明文音频落盘路径
+- 在用户不知情时启动记录的逻辑
+
+如果未来必须引入网络功能，应单独分支、默认关闭、显著文档说明，并进行独立安全审计。
+
+## 分发建议
+
+由于 Cairn 使用麦克风、相机、位置、前台服务、全文件访问和可选 Root 增强，主流应用商店大概率无法接受。
+
+建议：
+
+- 源码自构建
+- GitHub Releases
+- F-Droid 风格的可复现构建流程
+
+不建议：
+
+- 国内应用商店伪装上架
+- Google Play 强行规避审核
+- 任何形式的静默安装或远程部署
 
 ## License
 
-GPL-3.0 — 强 copyleft 保证衍生版同样开源、不被植入后门。
+GPL-3.0。衍生版本应继续开源、可审计，并对它声称要保护的人负责。
