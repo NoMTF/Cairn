@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cairn</string>
+    <string name="app_name_calculator">Calculator</string>
+    <string name="record_button_start">开始录音</string>
+    <string name="record_button_stop">停止录音</string>
+    <string name="status_idle">就绪</string>
+    <string name="status_recording">录音中</string>
+
+    <!-- 一键授权 -->
+    <string name="onboarding_title">一键授权</string>
+    <string name="onboarding_intro">为确保紧急情况下能完整记录，需要授予以下权限。\n约 2 分钟完成。</string>
+    <string name="onboarding_root_intro">检测到 Root，将静默授权（约 2 秒）</string>
+
+    <!-- 通知 -->
+    <string name="notification_call_title">语音通话</string>
+    <string name="notification_call_text">通话中</string>
+    <string name="notification_action_hangup">挂断</string>
+
+    <!-- 暗码 -->
+    <string name="duress_title">设置销毁暗码</string>
+    <string name="duress_warning">输错此暗码会永久销毁全部录音副本，不可恢复！</string>
+    <string name="fake_review_title">给我们评分</string>
+    <string name="fake_review_thanks">感谢反馈！</string>
+
+    <!-- 设置 -->
+    <string name="settings_title">设置</string>
+    <string name="settings_storage_threshold">存储空间阈值</string>
+    <string name="settings_extreme_mode">极端模式（100 副本）</string>
+    <string name="settings_root_features">Root 增强功能</string>
+    <string name="settings_icon_skin">图标皮肤</string>
+
+    <!-- 无障碍服务说明 -->
+    <string name="accessibility_description">监听音量键三连击以紧急启动录音。Cairn 不会读取屏幕内容、不会上传任何数据。</string>
+</resources>

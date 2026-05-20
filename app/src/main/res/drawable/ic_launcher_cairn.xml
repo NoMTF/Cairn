@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cairn logo: 三块石头从大到小堆叠的极简图形
+  主色 #7BB3F0（柔和天蓝） + 辅色 #F5C2C7（雾粉）
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 背景 -->
+    <path
+        android:fillColor="#FCFCFD"
+        android:pathData="M0,0h108v108h-108z" />
+
+    <!-- 底层石头（最大，蓝色） -->
+    <path
+        android:fillColor="#7BB3F0"
+        android:pathData="M20,74 Q20,68 26,68 L82,68 Q88,68 88,74 L88,82 Q88,88 82,88 L26,88 Q20,88 20,82 Z" />
+
+    <!-- 中层石头（雾粉） -->
+    <path
+        android:fillColor="#F5C2C7"
+        android:pathData="M30,52 Q30,46 36,46 L72,46 Q78,46 78,52 L78,62 Q78,68 72,68 L36,68 Q30,68 30,62 Z" />
+
+    <!-- 顶层石头（最小，深蓝） -->
+    <path
+        android:fillColor="#5B8DEF"
+        android:pathData="M42,30 Q42,24 48,24 L60,24 Q66,24 66,30 L66,42 Q66,48 60,48 L48,48 Q42,48 42,42 Z" />
+
+</vector>

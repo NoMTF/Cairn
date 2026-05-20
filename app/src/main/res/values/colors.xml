@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cairn 粉蓝白色板 -->
+    <color name="cairn_blue">#7BB3F0</color>
+    <color name="cairn_blue_dark">#5B8DEF</color>
+    <color name="cairn_pink">#F5C2C7</color>
+    <color name="cairn_white">#FCFCFD</color>
+    <color name="cairn_surface">#F4F8FB</color>
+    <color name="cairn_text">#2D3748</color>
+    <color name="cairn_text_muted">#94A3B8</color>
+    <color name="cairn_success">#86EFAC</color>
+    <color name="cairn_warning">#FCD34D</color>
+    <color name="cairn_danger">#F87171</color>
+    <color name="ic_launcher_background">#FCFCFD</color>
+</resources>
