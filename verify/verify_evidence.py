@@ -24,6 +24,9 @@ import sys
 import zipfile
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 
 def sha256_of(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()

@@ -11,6 +11,7 @@ import com.cairn.app.storage.StorageLocations
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 
 /**
@@ -114,6 +115,7 @@ class PhotoPipeline(
             // 3. 打开相机
             val cameraDevice = openCamera(cameraId)
             if (cameraDevice == null) {
+                imageReader.close()
                 shutterSilencer.restoreAfterCapture()
                 return@withContext
             }
@@ -122,6 +124,7 @@ class PhotoPipeline(
             val session = createCaptureSession(cameraDevice, imageReader)
             if (session == null) {
                 cameraDevice.close()
+                imageReader.close()
                 shutterSilencer.restoreAfterCapture()
                 return@withContext
             }
@@ -164,24 +167,34 @@ class PhotoPipeline(
 
     @Suppress("MissingPermission")
     private suspend fun openCamera(cameraId: String): CameraDevice? = suspendCancellableCoroutine { cont ->
+        val resumed = AtomicBoolean(false)
+
+        fun resumeOnce(value: CameraDevice?) {
+            if (resumed.compareAndSet(false, true) && cont.isActive) {
+                cont.resume(value) { _, camera, _ -> camera?.close() }
+            } else {
+                value?.close()
+            }
+        }
+
         try {
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
-                    if (cont.isActive) cont.resume(camera) { _, _, _ -> }
+                    resumeOnce(camera)
                 }
 
                 override fun onDisconnected(camera: CameraDevice) {
+                    resumeOnce(null)
                     camera.close()
-                    if (cont.isActive) cont.resume(null) { _, _, _ -> }
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
+                    resumeOnce(null)
                     camera.close()
-                    if (cont.isActive) cont.resume(null) { _, _, _ -> }
                 }
             }, backgroundHandler)
         } catch (e: Exception) {
-            if (cont.isActive) cont.resume(null) { _, _, _ -> }
+            resumeOnce(null)
         }
     }
 
@@ -190,22 +203,32 @@ class PhotoPipeline(
         cameraDevice: CameraDevice,
         imageReader: ImageReader
     ): CameraCaptureSession? = suspendCancellableCoroutine { cont ->
+        val resumed = AtomicBoolean(false)
+
+        fun resumeOnce(value: CameraCaptureSession?) {
+            if (resumed.compareAndSet(false, true) && cont.isActive) {
+                cont.resume(value) { _, session, _ -> session?.close() }
+            } else {
+                value?.close()
+            }
+        }
+
         try {
             cameraDevice.createCaptureSession(
                 listOf(imageReader.surface),
                 object : CameraCaptureSession.StateCallback() {
                     override fun onConfigured(session: CameraCaptureSession) {
-                        if (cont.isActive) cont.resume(session) { _, _, _ -> }
+                        resumeOnce(session)
                     }
 
                     override fun onConfigureFailed(session: CameraCaptureSession) {
-                        if (cont.isActive) cont.resume(null) { _, _, _ -> }
+                        resumeOnce(null)
                     }
                 },
                 backgroundHandler
             )
         } catch (e: Exception) {
-            if (cont.isActive) cont.resume(null) { _, _, _ -> }
+            resumeOnce(null)
         }
     }
 

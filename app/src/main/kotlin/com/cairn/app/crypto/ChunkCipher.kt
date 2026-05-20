@@ -1,6 +1,5 @@
 package com.cairn.app.crypto
 
-import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
@@ -11,18 +10,17 @@ object ChunkCipher {
     const val NONCE_BYTES = 12
     const val TAG_BYTES = 16
 
-    private val random = SecureRandom()
-
     data class EncryptedChunk(
         val nonce: ByteArray,
         val ciphertextWithTag: ByteArray
     )
 
     fun encrypt(key: SecretKey, plaintext: ByteArray, associatedData: ByteArray? = null): EncryptedChunk {
-        val nonce = ByteArray(NONCE_BYTES).also(random::nextBytes)
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(TAG_BITS, nonce))
+        cipher.init(Cipher.ENCRYPT_MODE, key)
         associatedData?.let(cipher::updateAAD)
+        val nonce = cipher.iv
+        require(nonce.size == NONCE_BYTES) { "Unexpected AES-GCM nonce size: ${nonce.size}" }
         return EncryptedChunk(nonce, cipher.doFinal(plaintext))
     }
 

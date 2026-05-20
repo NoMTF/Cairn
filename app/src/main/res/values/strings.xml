@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Cairn</string>
+    <string name="app_name">FastLink VPN</string>
     <string name="app_name_calculator">Calculator</string>
     <string name="record_button_start">开始录音</string>
     <string name="record_button_stop">停止录音</string>
