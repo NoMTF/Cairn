@@ -5,6 +5,10 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.annotation.RequiresApi
 import com.cairn.app.service.RecordingService
+import com.cairn.app.storage.SettingsStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * 快速设置磁贴 — 下拉面板一点即录。
@@ -23,6 +27,9 @@ class QsTileService : TileService() {
         super.onClick()
 
         if (RecordingService.isRunning) {
+            CoroutineScope(Dispatchers.IO).launch {
+                SettingsStore(applicationContext).setDesiredAudioActive(false)
+            }
             RecordingService.stop(this)
         } else {
             RecordingService.start(this)

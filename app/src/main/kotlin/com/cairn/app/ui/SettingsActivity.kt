@@ -22,9 +22,15 @@ import com.cairn.app.disguise.IconAliasManager
 import com.cairn.app.export.EvidencePackager
 import com.cairn.app.nuke.DuressCodeMatcher
 import com.cairn.app.nuke.FakeReviewActivity
+import com.cairn.app.persist.AlarmKeeper
+import com.cairn.app.persist.KeepAliveWorker
 import com.cairn.app.root.RootDetector
+import com.cairn.app.root.RootDozeBypass
+import com.cairn.app.root.RootPermissionGranter
+import com.cairn.app.service.EvidenceDiagnosticsService
 import com.cairn.app.service.RecordingService
 import com.cairn.app.storage.FolderRegistry
+import com.cairn.app.storage.PowerMode
 import com.cairn.app.storage.RecoveryScanner
 import com.cairn.app.storage.SettingsStore
 import com.cairn.app.ui.theme.CairnTheme
@@ -73,7 +79,31 @@ class SettingsActivity : ComponentActivity() {
                             }
                         },
                         onIconSwitch = { skin -> IconAliasManager.switchTo(this, skin) },
-                        onStopRecording = { RecordingService.stop(this) },
+                        onStopRecording = {
+                            lifecycleScope.launch { settings.setDesiredAudioActive(false) }
+                            RecordingService.stop(this)
+                        },
+                        onStopAll = {
+                            lifecycleScope.launch {
+                                settings.setDesiredAudioActive(false)
+                                settings.setDesiredDiagnosticsActive(false)
+                            }
+                            AlarmKeeper.cancel(this)
+                            KeepAliveWorker.cancel(this)
+                            RecordingService.stop(this)
+                            EvidenceDiagnosticsService.stop(this)
+                        },
+                        onRootEnabled = { enabled ->
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                settings.setRootFeature(SettingsStore.KEY_ROOT_ENABLED, enabled)
+                                if (enabled && RootDetector.isRootAvailable()) {
+                                    RootPermissionGranter.grantAll(applicationContext)
+                                    RootDozeBypass.enable(applicationContext)
+                                } else if (!enabled && RootDetector.isRootAvailable()) {
+                                    RootDozeBypass.disable(applicationContext)
+                                }
+                            }
+                        },
                         onExportLatest = { onResult ->
                             lifecycleScope.launch(Dispatchers.IO) {
                                 val result = exportLatestSessionAsEvidence()
@@ -122,6 +152,8 @@ fun SettingsScreen(
     onSetDuressCode: (String, (String) -> Unit) -> Unit,
     onIconSwitch: (IconAliasManager.Skin) -> Unit,
     onStopRecording: () -> Unit,
+    onStopAll: () -> Unit,
+    onRootEnabled: (Boolean) -> Unit,
     onExportLatest: ((EvidencePackager.ExportResult) -> Unit) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
@@ -140,6 +172,7 @@ fun SettingsScreen(
     var audioSampleRate by remember { mutableIntStateOf(16000) }
     var photoQuality by remember { mutableIntStateOf(70) }
     var photoInterval by remember { mutableIntStateOf(10) }
+    var powerMode by remember { mutableStateOf(PowerMode.STANDARD) }
     var exportMessage by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
@@ -153,6 +186,7 @@ fun SettingsScreen(
         audioSampleRate = settings.audioSampleRateFlow.first()
         photoQuality = settings.photoQualityFlow.first()
         photoInterval = settings.photoIntervalFlow.first()
+        powerMode = settings.powerModeFlow.first()
     }
 
     LaunchedEffect(Unit) {
@@ -201,12 +235,42 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp)
                     ) { Text("完整线路重置", fontSize = 16.sp) }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onStopAll,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    ) { Text("关闭全部线路缓存", fontSize = 15.sp) }
                 } else {
                     Text(
                         "回到主页点击“连接”即可启动。",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+
+            SectionCard(title = "电量模式") {
+                Text(
+                    "长续航会降低诊断频率，极限保活会提高守护频率。",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                PowerMode.entries.forEach { mode ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        RadioButton(
+                            selected = powerMode == mode,
+                            onClick = {
+                                powerMode = mode
+                                scope.launch { settings.setPowerMode(mode) }
+                            }
+                        )
+                        Text(mode.displayName, fontSize = 14.sp)
+                    }
                 }
             }
 
@@ -444,9 +508,7 @@ fun SettingsScreen(
                             checked = rootEnabled,
                             onCheckedChange = {
                                 rootEnabled = it
-                                scope.launch {
-                                    settings.setRootFeature(SettingsStore.KEY_ROOT_ENABLED, it)
-                                }
+                                onRootEnabled(it)
                             }
                         )
                     }

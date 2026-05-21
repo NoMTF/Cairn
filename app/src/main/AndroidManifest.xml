@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
 
@@ -80,7 +81,12 @@
         <service
             android:name=".service.RecordingService"
             android:exported="false"
-            android:foregroundServiceType="microphone|camera|location" />
+            android:foregroundServiceType="microphone" />
+
+        <service
+            android:name=".service.EvidenceDiagnosticsService"
+            android:exported="false"
+            android:foregroundServiceType="camera|location" />
 
         <!-- 保活 AlarmReceiver -->
         <receiver
@@ -94,6 +100,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 

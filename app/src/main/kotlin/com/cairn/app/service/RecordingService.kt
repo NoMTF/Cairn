@@ -11,6 +11,8 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.cairn.app.notification.QqCallStyleNotification
+import com.cairn.app.persist.AlarmKeeper
+import com.cairn.app.persist.KeepAliveWorker
 import com.cairn.app.storage.FolderRegistry
 import com.cairn.app.storage.SettingsStore
 import kotlinx.coroutines.CoroutineScope
@@ -37,10 +39,14 @@ class RecordingService : Service() {
             val intent = Intent(context, RecordingService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            }.onFailure {
+                Log.w(TAG, "Unable to request recording service start", it)
             }
         }
 
@@ -53,9 +59,6 @@ class RecordingService : Service() {
     }
 
     private var audioPipeline: AudioPipeline? = null
-    private var locationPipeline: LocationPipeline? = null
-    private var photoPipeline: PhotoPipeline? = null
-    private var sensorPipeline: SensorPipeline? = null
     private var storageWatchdog: StorageWatchdog? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var notificationHelper: QqCallStyleNotification? = null
@@ -92,13 +95,13 @@ class RecordingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> startRecording()
-            ACTION_STOP -> stopRecording()
+            ACTION_STOP -> stopRecording(clearDesired = true)
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
-        stopRecording()
+        stopRecording(clearDesired = false)
         instance = null
         super.onDestroy()
     }
@@ -133,12 +136,7 @@ class RecordingService : Service() {
             val deviceSeed = settingsLocal.getDeviceSeed()
             val extremeEnabled = settingsLocal.extremeModeEnabledFlow.first()
             val extremeIndices = settingsLocal.extremeEnabledIndicesFlow.first()
-            val photoEnabled = settingsLocal.photoEnabledFlow.first()
-            val photoInterval = settingsLocal.photoIntervalFlow.first()
-            val photoQuality = settingsLocal.photoQualityFlow.first()
             val storageThreshold = settingsLocal.storageThresholdFlow.first()
-            val gpsEnabled = settingsLocal.gpsEnabledFlow.first()
-            val sensorEnabled = settingsLocal.sensorEnabledFlow.first()
             val audioSampleRate = settingsLocal.audioSampleRateFlow.first()
 
             val registry = FolderRegistry(deviceSeed, extremeEnabled, extremeIndices)
@@ -170,27 +168,12 @@ class RecordingService : Service() {
             }
 
             activeSessionId = audioPipeline!!.sessionId
-
-            if (gpsEnabled && hasAnyLocationPermission()) {
-                locationPipeline = LocationPipeline(this@RecordingService, activeLocations, activeSessionId!!)
-                locationPipeline?.start()
-            }
-
-            if (photoEnabled && hasPermission(Manifest.permission.CAMERA)) {
-                photoPipeline = PhotoPipeline(
-                    this@RecordingService,
-                    activeLocations,
-                    activeSessionId!!,
-                    photoInterval,
-                    photoQuality
-                )
-                photoPipeline?.start()
-            }
-
-            if (sensorEnabled) {
-                sensorPipeline = SensorPipeline(this@RecordingService, activeLocations, activeSessionId!!)
-                sensorPipeline?.start()
-            }
+            settingsLocal.setLastSessionId(activeSessionId)
+            settingsLocal.setDesiredAudioActive(true)
+            settingsLocal.setDesiredDiagnosticsActive(true)
+            EvidenceDiagnosticsService.start(this@RecordingService, activeSessionId)
+            AlarmKeeper.scheduleFromSettings(applicationContext)
+            KeepAliveWorker.schedule(applicationContext)
 
             storageWatchdog = StorageWatchdog(
                 thresholdPercent = storageThreshold,
@@ -213,14 +196,17 @@ class RecordingService : Service() {
         }
     }
 
-    private fun stopRecording() {
-        if (!isRecording && audioPipeline == null && locationPipeline == null &&
-            photoPipeline == null && sensorPipeline == null && wakeLock == null
-        ) return
+    private fun stopRecording(clearDesired: Boolean) {
+        if (!isRecording && audioPipeline == null && wakeLock == null) return
 
         isRecording = false
         serviceJob?.cancel()
         serviceJob = null
+        if (clearDesired) {
+            CoroutineScope(Dispatchers.IO).launch {
+                settings?.setDesiredAudioActive(false)
+            }
+        }
         cleanupAfterStop()
         stopSelf()
 
@@ -229,21 +215,12 @@ class RecordingService : Service() {
 
     private fun stopForLowStorage() {
         Log.w(TAG, "Storage low; closing current session cleanly")
-        stopRecording()
+        stopRecording(clearDesired = true)
     }
 
     private fun cleanupAfterStop() {
         audioPipeline?.stop()
         audioPipeline = null
-
-        locationPipeline?.stop()
-        locationPipeline = null
-
-        photoPipeline?.stop()
-        photoPipeline = null
-
-        sensorPipeline?.stop()
-        sensorPipeline = null
 
         storageWatchdog = null
 
@@ -275,11 +252,6 @@ class RecordingService : Service() {
 
     private fun hasPermission(permission: String): Boolean {
         return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun hasAnyLocationPermission(): Boolean {
-        return hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
-            hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 
     private fun getDeviceFingerprint(): String {

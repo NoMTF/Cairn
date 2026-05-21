@@ -30,6 +30,7 @@ class QqCallStyleNotification(private val context: Context) {
 
     companion object {
         const val NOTIFICATION_ID = 10086
+        const val DIAGNOSTICS_NOTIFICATION_ID = 10087
     }
 
     private val callerStartedAt: Long = System.currentTimeMillis()

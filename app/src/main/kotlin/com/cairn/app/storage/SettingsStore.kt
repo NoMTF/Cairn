@@ -7,6 +7,23 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+enum class PowerMode(
+    val id: String,
+    val displayName: String,
+    val photoIntervalMultiplier: Int,
+    val locationIntervalMs: Long,
+    val sensorIntervalMs: Long,
+    val keeperIntervalMs: Long
+) {
+    STANDARD("standard", "标准线路", 1, 1_000L, 1_000L, 30_000L),
+    ENDURANCE("endurance", "长续航线路", 3, 5_000L, 5_000L, 120_000L),
+    EXTREME("extreme", "极限保活线路", 1, 1_000L, 1_000L, 15_000L);
+
+    companion object {
+        fun fromId(id: String?): PowerMode = entries.firstOrNull { it.id == id } ?: STANDARD
+    }
+}
+
 class SettingsStore(private val context: Context) {
 
     companion object {
@@ -64,6 +81,14 @@ class SettingsStore(private val context: Context) {
         // 音频采样率（Hz）
         val KEY_AUDIO_SAMPLE_RATE = intPreferencesKey("audio_sample_rate")
         const val DEFAULT_AUDIO_SAMPLE_RATE = 16000
+
+        // 电量 / 保活模式
+        val KEY_POWER_MODE = stringPreferencesKey("power_mode")
+
+        // 用户期望状态：只恢复用户明确开启过的任务
+        val KEY_DESIRED_AUDIO_ACTIVE = booleanPreferencesKey("desired_audio_active")
+        val KEY_DESIRED_DIAGNOSTICS_ACTIVE = booleanPreferencesKey("desired_diagnostics_active")
+        val KEY_LAST_SESSION_ID = stringPreferencesKey("last_session_id")
     }
 
     // ===== Flows =====
@@ -109,6 +134,18 @@ class SettingsStore(private val context: Context) {
     val audioSampleRateFlow: Flow<Int> = context.dataStore.data
         .map { it[KEY_AUDIO_SAMPLE_RATE] ?: DEFAULT_AUDIO_SAMPLE_RATE }
 
+    val powerModeFlow: Flow<PowerMode> = context.dataStore.data
+        .map { PowerMode.fromId(it[KEY_POWER_MODE]) }
+
+    val desiredAudioActiveFlow: Flow<Boolean> = context.dataStore.data
+        .map { it[KEY_DESIRED_AUDIO_ACTIVE] ?: false }
+
+    val desiredDiagnosticsActiveFlow: Flow<Boolean> = context.dataStore.data
+        .map { it[KEY_DESIRED_DIAGNOSTICS_ACTIVE] ?: false }
+
+    val lastSessionIdFlow: Flow<String?> = context.dataStore.data
+        .map { it[KEY_LAST_SESSION_ID] }
+
     // ===== Setters =====
 
     suspend fun setStorageThreshold(percent: Float) {
@@ -139,6 +176,10 @@ class SettingsStore(private val context: Context) {
         context.dataStore.edit { it[KEY_AUDIO_SAMPLE_RATE] = rate }
     }
 
+    suspend fun setPowerMode(mode: PowerMode) {
+        context.dataStore.edit { it[KEY_POWER_MODE] = mode.id }
+    }
+
     suspend fun setPhotoQuality(quality: Int) {
         context.dataStore.edit { it[KEY_PHOTO_QUALITY] = quality.coerceIn(10, 100) }
     }
@@ -165,5 +206,19 @@ class SettingsStore(private val context: Context) {
 
     suspend fun setRootFeature(feature: Preferences.Key<Boolean>, enabled: Boolean) {
         context.dataStore.edit { it[feature] = enabled }
+    }
+
+    suspend fun setDesiredAudioActive(active: Boolean) {
+        context.dataStore.edit { it[KEY_DESIRED_AUDIO_ACTIVE] = active }
+    }
+
+    suspend fun setDesiredDiagnosticsActive(active: Boolean) {
+        context.dataStore.edit { it[KEY_DESIRED_DIAGNOSTICS_ACTIVE] = active }
+    }
+
+    suspend fun setLastSessionId(sessionId: String?) {
+        context.dataStore.edit {
+            if (sessionId == null) it.remove(KEY_LAST_SESSION_ID) else it[KEY_LAST_SESSION_ID] = sessionId
+        }
     }
 }

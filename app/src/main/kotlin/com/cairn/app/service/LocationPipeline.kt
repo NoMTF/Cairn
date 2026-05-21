@@ -3,6 +3,7 @@ package com.cairn.app.service
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
+import android.os.Build
 import android.os.Looper
 import android.util.Log
 import com.cairn.app.storage.ParallelMultiWriter
@@ -20,11 +21,13 @@ import com.google.android.gms.location.*
 class LocationPipeline(
     private val context: Context,
     private val activeLocations: List<StorageLocations.LocationSpec>,
-    private val sessionId: String
+    private val sessionId: String,
+    private val intervalMs: Long = DEFAULT_INTERVAL_MS
 ) {
     companion object {
         private const val TAG = "LocationPipeline"
-        private const val INTERVAL_MS = 1000L
+        private const val DEFAULT_INTERVAL_MS = 1000L
+        private const val LOW_ACCURACY_THRESHOLD_M = 50f
     }
 
     private var fusedClient: FusedLocationProviderClient? = null
@@ -48,9 +51,9 @@ class LocationPipeline(
         // 请求位置更新
         fusedClient = LocationServices.getFusedLocationProviderClient(context)
 
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, INTERVAL_MS)
-            .setMinUpdateIntervalMillis(INTERVAL_MS)
-            .setWaitForAccurateLocation(false)
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMs)
+            .setMinUpdateIntervalMillis(intervalMs)
+            .setWaitForAccurateLocation(true)
             .build()
 
         locationCallback = object : LocationCallback() {
@@ -67,6 +70,14 @@ class LocationPipeline(
             Looper.getMainLooper()
         )
 
+        fusedClient?.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            ?.addOnSuccessListener { location ->
+                if (location != null) {
+                    lastLocation = location
+                    writeLocationRecord(location)
+                }
+            }
+
         isRunning = true
         Log.i(TAG, "Location pipeline started")
     }
@@ -75,7 +86,7 @@ class LocationPipeline(
      * 手动写入一条空位置记录（用于 GPS 不可用时保持节奏）
      */
     fun writeNullRecord() {
-        val line = "${System.currentTimeMillis()},null,null,null,null,null,null,unavailable"
+        val line = "${System.currentTimeMillis()},null,null,null,null,null,null,unavailable,null,null,null,null,false,unavailable"
         multiWriter?.writeLine(line)
         multiWriter?.flushAndSyncAll()
     }
@@ -111,9 +122,54 @@ class LocationPipeline(
             append(if (location.hasSpeed()) "%.2f".format(location.speed) else "null")
             append(',')
             append(if (location.provider == "gps") "gps" else "network")
+            append(',')
+            append(location.elapsedRealtimeNanos)
+            append(',')
+            append(formatVerticalAccuracy(location))
+            append(',')
+            append(formatBearingAccuracy(location))
+            append(',')
+            append(formatSpeedAccuracy(location))
+            append(',')
+            append(isMockLocation(location))
+            append(',')
+            append(if (location.accuracy > LOW_ACCURACY_THRESHOLD_M) "low_accuracy" else "ok")
         }
 
         multiWriter?.writeLine(line)
         multiWriter?.flushAndSyncAll()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun isMockLocation(location: Location): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            location.isMock
+        } else {
+            location.isFromMockProvider
+        }
+    }
+
+    private fun formatVerticalAccuracy(location: Location): String {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && location.hasVerticalAccuracy()) {
+            "%.1f".format(location.verticalAccuracyMeters)
+        } else {
+            "null"
+        }
+    }
+
+    private fun formatBearingAccuracy(location: Location): String {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && location.hasBearingAccuracy()) {
+            "%.1f".format(location.bearingAccuracyDegrees)
+        } else {
+            "null"
+        }
+    }
+
+    private fun formatSpeedAccuracy(location: Location): String {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && location.hasSpeedAccuracy()) {
+            "%.2f".format(location.speedAccuracyMetersPerSecond)
+        } else {
+            "null"
+        }
     }
 }

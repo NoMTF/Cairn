@@ -5,6 +5,10 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import com.cairn.app.service.RecordingService
+import com.cairn.app.storage.SettingsStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * 音量键三连击监听 — 屏幕熄灭时 [Vol-][Vol-][Vol-] 0.5 秒内 → 立刻开始录音。
@@ -51,6 +55,9 @@ class VolumeKeyAccessibilityService : AccessibilityService() {
         Log.i(TAG, "Triple volume-down detected! Starting recording...")
 
         if (!RecordingService.isRunning) {
+            CoroutineScope(Dispatchers.IO).launch {
+                SettingsStore(applicationContext).setDesiredAudioActive(true)
+            }
             RecordingService.start(this)
         }
     }

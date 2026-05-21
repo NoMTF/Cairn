@@ -4,6 +4,18 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+import java.util.Properties
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+}
+
+fun secret(name: String): String? {
+    return keystoreProperties.getProperty(name) ?: System.getenv(name.uppercase().replace(".", "_"))
+}
+
 android {
     namespace = "com.cairn.app"
     compileSdk = 36
@@ -16,9 +28,22 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFileValue = secret("storeFile")
+            if (storeFileValue != null) {
+                storeFile = rootProject.file(storeFileValue)
+                storePassword = secret("storePassword")
+                keyAlias = secret("keyAlias")
+                keyPassword = secret("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release").takeIf { it.storeFile != null }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -101,7 +101,7 @@ Cairn/
 │   └── src/main/
 │       ├── AndroidManifest.xml
 │       ├── assets/
-│       │   └── decrypt.py             # 导出包附带的 CNCE 检查脚本
+│       │   └── decrypt.py             # 开发者用 CNCE 检查脚本，不再随普通导出包附带
 │       ├── kotlin/com/cairn/app/
 │       └── res/
 ├── docs/
@@ -709,9 +709,12 @@ Settings → Export Connection Logs → Export Latest Session
 zip 内容：
 
 ```text
-recording/...
+audio/session_<sessionId>.wav
+photos/*.jpg
+gps/gps.csv
+sensors/sensors.csv
+integrity/integrity_chain.csv
 manifest.json
-decrypt.py
 README.md
 ```
 
@@ -721,10 +724,13 @@ manifest 内容包括：
 - export_time
 - primary_copy_index
 - primary_copy_sha256
-- copy_count
-- integrity_chain_file
-- integrity_chain_sha256
-- all_copies
+- raw_copy_count
+- raw_copies
+- audio.file / audio.sha256 / sample_rate / channels / chunk_count / pcm_bytes
+- counts.photos / counts.gps_records / counts.sensor_records / counts.integrity_chain_records
+- files 中全部可交付文件的 SHA-256
+- audio_stopped_at
+- diagnostics_continued_until
 
 ### 7.2 独立验证脚本
 
@@ -738,10 +744,11 @@ manifest 内容包括：
 
 1. zip 存在
 2. `manifest.json` 存在
-3. 主副本 SHA-256 匹配
-4. 主副本是否为 CNCE 加密容器
-5. GPS 时间戳连续性
-6. 哈希链 prev/current 是否连续
+3. manifest 中全部导出文件 SHA-256 匹配
+4. `audio/*.wav` 是可播放 PCM WAV，header 与 manifest 一致
+5. GPS / 传感器 CSV 时间戳不倒退
+6. 哈希链 prev/current 连续
+7. 照片数量与 manifest 一致
 
 运行：
 
@@ -763,19 +770,7 @@ python verify/verify_evidence.py cairn_evidence_20260521_010203.zip
 
 重要限制：
 
-当前脚本只是“检查容器结构”，不是完整离线解密器。原因：
-
-- App 本地录音使用 Android Keystore 主密钥
-- Keystore 密钥不可导出
-- 目前还没有实现“导出时输入密码并重加密给外部脚本解密”的完整流程
-
-后续如果要让律师电脑直接解密，需要补：
-
-1. Settings 导出时要求用户输入导出密码
-2. App 用 Keystore 解密每个 chunk
-3. 用 PBKDF2-SHA256 从导出密码派生 key
-4. 用派生 key 重加密 chunk 写入 zip
-5. `decrypt.py` 实现 PBKDF2 + AES-GCM 解密
+当前脚本只是开发者检查内部 CNCE 容器结构的工具，不再作为普通导出包内容。普通导出包由 App 在设备内用 Keystore 解密并合成为 WAV / JPG / CSV，可直接打开。
 
 ---
 
@@ -1263,13 +1258,11 @@ Google Play 和国内应用商店大概率无法上架。
 - GitHub Releases
 - 源码自编译
 
-### 14.3 加密导出尚未完整闭环
+### 14.3 普通导出与原始审计包边界
 
-当前录音落盘已经是 Android Keystore AES-GCM CNCE 容器。
+当前录音落盘已经是 Android Keystore AES-GCM CNCE 容器。普通导出时，App 会在设备内读取 CNCE、用 Keystore 密钥解密 chunk、校验顺序，并合成为可直接打开的 WAV / JPG / CSV zip 包。
 
-但导出 zip 中的 `decrypt.py` 目前主要检查 CNCE 结构；外部电脑无法直接解密 Keystore 密钥保护的 chunks。
-
-如果要完整法庭交付，需要实现“导出密码重加密”。见第 17.1。
+如果未来需要把内部 CNCE 原始副本交给第三方离线解密，仍需另做“导出密码重加密”或“原始审计包”流程。
 
 ### 14.4 Root 隐私点隐藏风险
 
@@ -1376,20 +1369,22 @@ chainWriter?.flushAndSyncAll()
 
 ## 17. 后续开发优先级
 
-### 17.1 P0：导出密码重加密闭环
+### 17.1 P0：原始审计包 / 导出密码重加密闭环
 
 现状：
 
 - 设备内录音已加密
-- 外部电脑无法直接解密，因为 Keystore 密钥不可导出
+- 普通导出包已经由 App 内合成为可读 WAV / JPG / CSV
+- 外部电脑仍无法直接解密内部 CNCE 原始副本，因为 Keystore 密钥不可导出
 
 目标：
 
-1. Settings 导出时弹出“导出密码”输入框。
-2. App 使用 Keystore key 解密 CNCE chunks。
-3. 用 PBKDF2-SHA256 从导出密码派生导出 key。
-4. 用导出 key 重新 AES-GCM 加密 chunks。
-5. zip manifest 写入：
+1. 新增可选“导出原始审计包”入口。
+2. Settings 导出时弹出“导出密码”输入框。
+3. App 使用 Keystore key 解密 CNCE chunks。
+4. 用 PBKDF2-SHA256 从导出密码派生导出 key。
+5. 用导出 key 重新 AES-GCM 加密 chunks。
+6. zip manifest 写入：
 
 ```json
 {
@@ -1402,7 +1397,7 @@ chainWriter?.flushAndSyncAll()
 }
 ```
 
-6. `decrypt.py` 实现完整解密，输出 WAV 或 PCM。
+7. `decrypt.py` 实现完整离线解密，输出 WAV 或 PCM。
 
 ### 17.2 P0：单元测试
 
@@ -1432,15 +1427,14 @@ chainWriter?.flushAndSyncAll()
 - 或 kotlinx serialization
 - 或确保字符串字段做 escape
 
-### 17.5 P1：CNCE 独立验证增强
+### 17.5 P1：合并导出验证增强
 
-`verify_evidence.py` 应进一步验证：
+`verify_evidence.py` 后续应进一步验证：
 
-- CNCE magic
-- version
-- chunk_count 与实际 chunk 数一致
-- 每个 chunk 长度不越界
-- manifest 中 chain sha 与 zip 中 chain sha 一致
+- GPS / sensor record count 与 manifest 一致
+- WAV duration 与 chunk_count / sample_rate 大致一致
+- 照片 JPEG magic 与文件数量一致
+- README 中 session id 与 manifest 一致
 
 ### 17.6 P1：低空间暂停语义修复
 
@@ -1602,7 +1596,7 @@ grep -R "INTERNET\|ACCESS_NETWORK_STATE" app/build/intermediates/merged_manifest
 - 默认副本：10 处。
 - 极端候选：100 处。
 - 网络权限：最终 manifest 无 `INTERNET` / `ACCESS_NETWORK_STATE`。
-- 导出：最新 session zip，含 manifest、README、decrypt.py。
+- 导出：最新 session zip，含合并 WAV、照片 JPG、GPS CSV、传感器 CSV、完整性链、manifest、README。
 - 核爆：伪评分页暗码触发，三遍覆写 + 清私有数据 + Root 自卸载。
 - 构建：`./gradlew assembleDebug` 通过。
 

@@ -24,11 +24,12 @@ import kotlinx.coroutines.*
 class SensorPipeline(
     private val context: Context,
     private val activeLocations: List<StorageLocations.LocationSpec>,
-    private val sessionId: String
+    private val sessionId: String,
+    private val intervalMs: Long = DEFAULT_INTERVAL_MS
 ) {
     companion object {
         private const val TAG = "SensorPipeline"
-        private const val INTERVAL_MS = 1000L
+        private const val DEFAULT_INTERVAL_MS = 1000L
     }
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -79,7 +80,7 @@ class SensorPipeline(
         samplingJob = CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
                 writeSample()
-                delay(INTERVAL_MS)
+                delay(intervalMs)
             }
         }
 

@@ -53,7 +53,10 @@ class ParallelMultiWriter(
                         val file = File(dir, fileName)
                         val fos = FileOutputStream(file)
                         // 写 CSV header
-                        fos.write("epoch_ms,lat,lon,accuracy_m,altitude_m,bearing_deg,speed_mps,source\n".toByteArray())
+                        val header = "epoch_ms,lat,lon,accuracy_m,altitude_m,bearing_deg,speed_mps,source," +
+                            "elapsed_realtime_nanos,vertical_accuracy_m,bearing_accuracy_deg," +
+                            "speed_accuracy_mps,is_mock,quality\n"
+                        fos.write(header.toByteArray())
                         writers.add(WriterEntry(spec.index, file, fos = fos))
                     }
                     FileType.SENSOR -> {

@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.cairn.app.service.EvidenceDiagnosticsService
+import com.cairn.app.service.RecordingService
 import com.cairn.app.storage.FolderRegistry
 import com.cairn.app.storage.RecoveryScanner
 import com.cairn.app.storage.SettingsStore
@@ -27,14 +29,16 @@ class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action == Intent.ACTION_BOOT_COMPLETED ||
-            intent?.action == "android.intent.action.QUICKBOOT_POWERON") {
+            intent?.action == "android.intent.action.QUICKBOOT_POWERON" ||
+            intent?.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
 
-            Log.i(TAG, "Boot completed")
+            Log.i(TAG, "Boot/package completed")
 
-            // 1. 调度 AlarmKeeper
-            AlarmKeeper.schedule(context)
+            // 1. 调度保活兜底
+            AlarmKeeper.scheduleFromSettings(context)
+            KeepAliveWorker.schedule(context)
 
-            // 2. 异步修复未关闭的录音（goAsync 防止 onReceive 超时被杀）
+            // 2. 异步修复未关闭的录音，并按用户期望状态恢复
             val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
                 try {
@@ -44,6 +48,13 @@ class BootReceiver : BroadcastReceiver() {
                     val idx = settings.extremeEnabledIndicesFlow.first()
                     val registry = FolderRegistry(seed, ext, idx)
                     RecoveryScanner.repairAll(registry.getAll())
+
+                    val desiredAudio = settings.desiredAudioActiveFlow.first()
+                    val desiredDiagnostics = settings.desiredDiagnosticsActiveFlow.first()
+                    val sessionId = settings.lastSessionIdFlow.first()
+                    if (desiredAudio) RecordingService.start(context)
+                    if (desiredDiagnostics) EvidenceDiagnosticsService.start(context, sessionId)
+
                     Log.i(TAG, "Recovery scan complete")
                 } catch (e: Exception) {
                     Log.e(TAG, "Recovery failed", e)

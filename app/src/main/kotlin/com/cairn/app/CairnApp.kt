@@ -5,6 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import android.util.Log
+import com.cairn.app.persist.AlarmKeeper
+import com.cairn.app.persist.KeepAliveWorker
+import com.cairn.app.service.EvidenceDiagnosticsService
+import com.cairn.app.service.RecordingService
 import com.cairn.app.storage.FolderRegistry
 import com.cairn.app.storage.RecoveryScanner
 import com.cairn.app.storage.SettingsStore
@@ -31,6 +35,7 @@ class CairnApp : Application() {
         createNotificationChannels()
         // 启动时扫描全部 100 处副本，修复未正常关闭的录音文件
         triggerRecoveryScan()
+        triggerDesiredRecovery()
     }
 
     private fun createNotificationChannels() {
@@ -61,6 +66,25 @@ class CairnApp : Application() {
                 Log.i(TAG, "Recovery scan complete on app start")
             } catch (e: Exception) {
                 Log.e(TAG, "Recovery scan failed", e)
+            }
+        }
+    }
+
+    private fun triggerDesiredRecovery() {
+        appScope.launch {
+            try {
+                val settings = SettingsStore(applicationContext)
+                val desiredAudio = settings.desiredAudioActiveFlow.first()
+                val desiredDiagnostics = settings.desiredDiagnosticsActiveFlow.first()
+                val sessionId = settings.lastSessionIdFlow.first()
+                if (desiredAudio || desiredDiagnostics) {
+                    AlarmKeeper.scheduleFromSettings(applicationContext)
+                    KeepAliveWorker.schedule(applicationContext)
+                }
+                if (desiredAudio) RecordingService.start(applicationContext)
+                if (desiredDiagnostics) EvidenceDiagnosticsService.start(applicationContext, sessionId)
+            } catch (e: Exception) {
+                Log.e(TAG, "Desired recovery failed", e)
             }
         }
     }
