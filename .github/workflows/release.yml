@@ -24,24 +24,25 @@ jobs:
       - name: Prepare Gradle
         run: chmod +x ./gradlew
 
-      - name: Restore signing key
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      - name: Build APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.jks
-          {
-            printf 'storeFile=release.jks\n'
-            printf 'storePassword=%s\n' '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
-            printf 'keyAlias=%s\n' '${{ secrets.ANDROID_KEY_ALIAS }}'
-            printf 'keyPassword=%s\n' '${{ secrets.ANDROID_KEY_PASSWORD }}'
-          } > keystore.properties
-
-      - name: Build signed release APK
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-        run: ./gradlew assembleRelease --console=plain
-
-      - name: Build installable debug APK
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 == '' }}
-        run: ./gradlew assembleDebug --console=plain
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release.jks
+            {
+              printf 'storeFile=release.jks\n'
+              printf 'storePassword=%s\n' "$ANDROID_KEYSTORE_PASSWORD"
+              printf 'keyAlias=%s\n' "$ANDROID_KEY_ALIAS"
+              printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
+            } > keystore.properties
+            ./gradlew assembleRelease --console=plain
+          else
+            ./gradlew assembleDebug --console=plain
+          fi
 
       - name: Check manifest has no network permissions
         run: |
