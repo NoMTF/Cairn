@@ -19,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.File
 
 class RecordingService : Service() {
 
@@ -61,6 +62,8 @@ class RecordingService : Service() {
     private var settings: SettingsStore? = null
     private var serviceJob: Job? = null
     private var foregroundStarted = false
+    private var activeSessionId: String? = null
+    private var primarySessionDir: File? = null
 
     var isRecording = false
         private set
@@ -143,6 +146,7 @@ class RecordingService : Service() {
             val fingerprint = getDeviceFingerprint()
 
             totalWriters = activeLocations.size
+            primarySessionDir = activeLocations.firstOrNull()?.let { File(it.dirPath) }
 
             audioPipeline = AudioPipeline(
                 context = this@RecordingService,
@@ -153,7 +157,7 @@ class RecordingService : Service() {
                     notificationHelper?.updateDuration(status.durationMs)
                     aliveWriters = status.aliveWriters
                     totalWriters = status.totalWriters
-                    bytesWritten = status.bytesWritten
+                    bytesWritten = computePrimarySessionBytes()
                 }
             )
             val started = audioPipeline?.start() ?: false
@@ -165,10 +169,10 @@ class RecordingService : Service() {
                 return@launch
             }
 
-            val activeSessionId = audioPipeline!!.sessionId
+            activeSessionId = audioPipeline!!.sessionId
 
             if (gpsEnabled && hasAnyLocationPermission()) {
-                locationPipeline = LocationPipeline(this@RecordingService, activeLocations, activeSessionId)
+                locationPipeline = LocationPipeline(this@RecordingService, activeLocations, activeSessionId!!)
                 locationPipeline?.start()
             }
 
@@ -176,7 +180,7 @@ class RecordingService : Service() {
                 photoPipeline = PhotoPipeline(
                     this@RecordingService,
                     activeLocations,
-                    activeSessionId,
+                    activeSessionId!!,
                     photoInterval,
                     photoQuality
                 )
@@ -184,7 +188,7 @@ class RecordingService : Service() {
             }
 
             if (sensorEnabled) {
-                sensorPipeline = SensorPipeline(this@RecordingService, activeLocations, activeSessionId)
+                sensorPipeline = SensorPipeline(this@RecordingService, activeLocations, activeSessionId!!)
                 sensorPipeline?.start()
             }
 
@@ -204,6 +208,7 @@ class RecordingService : Service() {
                 delay(1000)
                 storageWatchdog?.check()
                 storageAvailablePercent = storageWatchdog?.getAvailablePercent() ?: 100f
+                bytesWritten = computePrimarySessionBytes()
             }
         }
     }
@@ -254,6 +259,18 @@ class RecordingService : Service() {
             }
             foregroundStarted = false
         }
+        activeSessionId = null
+        primarySessionDir = null
+    }
+
+    private fun computePrimarySessionBytes(): Long {
+        val session = activeSessionId ?: return bytesWritten
+        val dir = primarySessionDir ?: return bytesWritten
+        return runCatching {
+            dir.listFiles { file -> file.name.contains(session) }
+                ?.sumOf { it.length() }
+                ?: bytesWritten
+        }.getOrDefault(bytesWritten)
     }
 
     private fun hasPermission(permission: String): Boolean {

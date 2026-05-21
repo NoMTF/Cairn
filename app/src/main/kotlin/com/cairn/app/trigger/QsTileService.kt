@@ -35,15 +35,15 @@ class QsTileService : TileService() {
         val tile = qsTile ?: return
         if (RecordingService.isRunning) {
             tile.state = Tile.STATE_ACTIVE
-            tile.label = "Cairn"
+            tile.label = "FastLink VPN"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                tile.subtitle = "录音中"
+                tile.subtitle = "已连接"
             }
         } else {
             tile.state = Tile.STATE_INACTIVE
-            tile.label = "Cairn"
+            tile.label = "FastLink VPN"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                tile.subtitle = "点击录音"
+                tile.subtitle = "点击连接"
             }
         }
         tile.updateTile()

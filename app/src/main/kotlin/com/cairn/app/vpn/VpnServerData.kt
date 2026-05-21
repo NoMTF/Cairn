@@ -21,25 +21,25 @@ object VpnServerData {
     )
 
     enum class Tier(val displayName: String, val color: Long) {
-        FREE("FREE", 0xFF94A3B8),
-        PREMIUM("PREMIUM", 0xFFEAB308),
-        PLUS("PLUS", 0xFF7BB3F0)
+        FREE("免费", 0xFF94A3B8),
+        PREMIUM("高级", 0xFFEAB308),
+        PLUS("优选", 0xFF7BB3F0)
     }
 
     val SERVERS: List<Server> = listOf(
-        Server("auto",    "Auto",          "智能选择",  "⚡", 0,   Tier.PLUS,    35),
-        Server("hk-1",    "Hong Kong",     "香港 1",   "🇭🇰", 12,  Tier.PREMIUM, 42),
-        Server("hk-2",    "Hong Kong",     "香港 2",   "🇭🇰", 18,  Tier.PREMIUM, 67),
-        Server("jp-tokyo","Japan",         "东京",     "🇯🇵", 45,  Tier.PREMIUM, 28),
-        Server("jp-osaka","Japan",         "大阪",     "🇯🇵", 52,  Tier.PREMIUM, 19),
-        Server("sg-1",    "Singapore",     "新加坡",   "🇸🇬", 68,  Tier.PREMIUM, 35),
-        Server("us-la",   "United States", "洛杉矶",   "🇺🇸", 145, Tier.PLUS,    81),
-        Server("us-ny",   "United States", "纽约",     "🇺🇸", 198, Tier.PLUS,    72),
-        Server("uk-ldn",  "United Kingdom","伦敦",     "🇬🇧", 215, Tier.PLUS,    55),
-        Server("de-fra",  "Germany",       "法兰克福", "🇩🇪", 234, Tier.PLUS,    48),
-        Server("nl-ams",  "Netherlands",   "阿姆斯特丹","🇳🇱", 245, Tier.PLUS,    33),
-        Server("kr-seoul","South Korea",   "首尔",     "🇰🇷", 38,  Tier.FREE,    91),
-        Server("tw-tpe",  "Taiwan",        "台北",     "🇹🇼", 22,  Tier.FREE,    87),
+        Server("auto",    "自动线路",       "智能选择",  "⚡", 0,   Tier.PLUS,    35),
+        Server("hk-1",    "中国香港",       "香港 1",   "🇭🇰", 12,  Tier.PREMIUM, 42),
+        Server("hk-2",    "中国香港",       "香港 2",   "🇭🇰", 18,  Tier.PREMIUM, 67),
+        Server("jp-tokyo","日本",           "东京",     "🇯🇵", 45,  Tier.PREMIUM, 28),
+        Server("jp-osaka","日本",           "大阪",     "🇯🇵", 52,  Tier.PREMIUM, 19),
+        Server("sg-1",    "新加坡",         "新加坡",   "🇸🇬", 68,  Tier.PREMIUM, 35),
+        Server("us-la",   "美国",           "洛杉矶",   "🇺🇸", 145, Tier.PLUS,    81),
+        Server("us-ny",   "美国",           "纽约",     "🇺🇸", 198, Tier.PLUS,    72),
+        Server("uk-ldn",  "英国",           "伦敦",     "🇬🇧", 215, Tier.PLUS,    55),
+        Server("de-fra",  "德国",           "法兰克福", "🇩🇪", 234, Tier.PLUS,    48),
+        Server("nl-ams",  "荷兰",           "阿姆斯特丹","🇳🇱", 245, Tier.PLUS,    33),
+        Server("kr-seoul","韩国",           "首尔",     "🇰🇷", 38,  Tier.FREE,    91),
+        Server("tw-tpe",  "中国台湾",       "台北",     "🇹🇼", 22,  Tier.FREE,    87),
     )
 
     fun byId(id: String): Server = SERVERS.firstOrNull { it.id == id } ?: SERVERS[0]

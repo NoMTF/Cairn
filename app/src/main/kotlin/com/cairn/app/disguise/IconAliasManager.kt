@@ -8,8 +8,8 @@ import android.content.pm.PackageManager
  * 桌面图标皮肤切换。
  *
  * 通过 activity-alias + 启用/禁用切换：
- * - 默认：Cairn 原版图标
- * - 极端皮肤：Calculator
+ * - 默认：FastLink VPN 图标
+ * - 极端皮肤：计算器
  *
  * 切换后桌面 launcher 会在几秒内刷新显示新图标。
  * 注意：同一时间只能有一个 alias 启用，否则会显示多个图标。
@@ -17,8 +17,8 @@ import android.content.pm.PackageManager
 object IconAliasManager {
 
     enum class Skin(val componentName: String, val displayName: String) {
-        DEFAULT("com.cairn.app.ui.MainActivity", "Cairn"),
-        CALCULATOR("com.cairn.app.disguise.CalculatorAlias", "Calculator");
+        DEFAULT("com.cairn.app.ui.MainActivity", "FastLink"),
+        CALCULATOR("com.cairn.app.disguise.CalculatorAlias", "计算器");
     }
 
     /**

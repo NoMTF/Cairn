@@ -131,33 +131,33 @@ class EvidencePackager(private val context: Context) {
     }
 
     private fun buildReadme(sessionId: String, copyCount: Int, hasChain: Boolean): String {
-        val chainNote = if (hasChain) "- `recording/*.chain` - SHA-256 continuity chain, one row per audio chunk\n" else ""
+        val chainNote = if (hasChain) "- `recording/*.chain` - SHA-256 连续性链，每个音频分块一行\n" else ""
         return """
-# FastLink Diagnostic Bundle - $sessionId
+# FastLink 诊断包 - $sessionId
 
-This package was exported by Cairn / FastLink VPN from local device storage. The app is designed for extreme personal-safety documentation and does not use a network upload path.
+此包由 FastLink VPN 从本机存储导出。它面向极端个人安全记录场景设计，不包含网络上传路径。
 
-## Contents
+## 内容
 
-- `recording/` - encrypted CNCE audio containers and sidecar files
-$chainNote- `manifest.json` - session metadata and SHA-256 hashes for $copyCount available copies
-- `decrypt.py` - CNCE container inspection helper
-- `README.md` - this file
+- `recording/` - CNCE 加密音频容器和 sidecar 文件
+$chainNote- `manifest.json` - 会话元数据和 $copyCount 份可用副本的 SHA-256
+- `decrypt.py` - CNCE 容器检查脚本
+- `README.md` - 本文件
 
-## Verification
+## 验证
 
-1. Use the repository script `verify/verify_evidence.py`.
-2. Run:
+1. 使用仓库中的 `verify/verify_evidence.py`。
+2. 运行：
    ```
-   python verify_evidence.py <this-zip-file>
+   python verify_evidence.py <本zip文件>
    ```
-3. The script checks the manifest, primary copy hash, CNCE marker, GPS continuity where present, and hash-chain continuity where present.
+3. 脚本会检查 manifest、主副本哈希、CNCE 标记、GPS 连续性和哈希链连续性。
 
-## Notes
+## 说明
 
-Audio is stored in device-bound Android Keystore AES-GCM CNCE containers. `decrypt.py` currently checks container structure; full off-device decryption requires the planned export-password re-encryption flow.
+音频存储在受 Android Keystore 保护的 AES-GCM CNCE 容器中。`decrypt.py` 当前用于检查容器结构；完整离线解密需要后续的导出密码重加密流程。
 
-Source repository: https://github.com/NoMTF/Cairn
+源码仓库：https://github.com/NoMTF/Cairn
         """.trimIndent()
     }
 

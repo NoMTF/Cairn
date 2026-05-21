@@ -100,7 +100,7 @@ fun OnboardingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("一键授权", fontWeight = FontWeight.SemiBold) }
+                title = { Text("线路初始化", fontWeight = FontWeight.SemiBold) }
             )
         }
     ) { padding ->
@@ -111,12 +111,12 @@ fun OnboardingScreen(
                 .padding(24.dp)
         ) {
             Text(
-                text = "为确保紧急情况下能完整记录，",
+                text = "为确保极端情况下线路诊断完整可用，",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "需要授予以下权限",
+                text = "需要启用以下系统通道",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -188,7 +188,7 @@ fun OnboardingScreen(
                     .height(52.dp)
             ) {
                 Text(
-                    text = if (allDone) "完成 · 开始使用" else "完成上述步骤",
+                    text = if (allDone) "完成 · 开始连接" else "完成上述步骤",
                     fontSize = 16.sp
                 )
             }
@@ -229,7 +229,7 @@ fun StepRow(
                 modifier = Modifier.weight(1f)
             )
             if (!isCompleted) {
-                TextButton(onClick = onClick) { Text("授权") }
+                TextButton(onClick = onClick) { Text("启用") }
             }
         }
     }

@@ -64,10 +64,10 @@ class SettingsActivity : ComponentActivity() {
                                     onResult("OK")
                                 } else {
                                     onResult(when (v) {
-                                        DuressCodeMatcher.ValidationResult.TOO_SHORT -> "Route key must be at least 8 characters"
-                                        DuressCodeMatcher.ValidationResult.TOO_SIMPLE -> "Use digits plus letters or symbols"
-                                        DuressCodeMatcher.ValidationResult.IS_FACTORY_DEFAULT -> "Default route key is not allowed"
-                                        else -> "Unable to save route key"
+                                        DuressCodeMatcher.ValidationResult.TOO_SHORT -> "线路密钥至少需要 8 个字符"
+                                        DuressCodeMatcher.ValidationResult.TOO_SIMPLE -> "请同时使用数字和字母或符号"
+                                        DuressCodeMatcher.ValidationResult.IS_FACTORY_DEFAULT -> "不能使用默认线路密钥"
+                                        else -> "无法保存线路密钥"
                                     })
                                 }
                             }
@@ -98,7 +98,7 @@ class SettingsActivity : ComponentActivity() {
 
         val sessions = RecoveryScanner.scanAll(allLocations)
         if (sessions.isEmpty()) {
-            return EvidencePackager.ExportResult(false, 0, "No diagnostic session found", null)
+            return EvidencePackager.ExportResult(false, 0, "没有找到诊断会话", null)
         }
 
         // Session IDs sort lexicographically in chronological order.
@@ -165,7 +165,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("FastLink Settings", fontWeight = FontWeight.SemiBold) },
+                title = { Text("FastLink 设置", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onClose) { Text("<", fontSize = 24.sp) }
                 }
@@ -183,12 +183,12 @@ fun SettingsScreen(
 
             // ===== Connection Status =====
             SectionCard(
-                title = if (recordingActive) "Connection Active" else "Tunnel Idle",
+                title = if (recordingActive) "连接已启用" else "隧道空闲",
                 accent = recordingActive
             ) {
                 if (recordingActive) {
                     Text(
-                        "FastLink VPN is currently connected.\nUse the route reset below only when you want the tunnel fully closed.",
+                        "FastLink VPN 当前已连接。\n仅在需要完全关闭隧道时使用下方的线路重置。",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -200,10 +200,10 @@ fun SettingsScreen(
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp)
-                    ) { Text("Full Route Reset", fontSize = 16.sp) }
+                    ) { Text("完整线路重置", fontSize = 16.sp) }
                 } else {
                     Text(
-                        "Tap \"Connect\" on the main page to start.",
+                        "回到主页点击“连接”即可启动。",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -212,16 +212,16 @@ fun SettingsScreen(
 
             // ===== Private Route Recovery Key =====
             if (!duressLocked) {
-                SectionCard(title = "Private Route Recovery Key", danger = true) {
+                SectionCard(title = "私有线路恢复密钥", danger = true) {
                     Text(
-                        "This recovery key can only be stored once. After saving, this section is hidden.",
+                        "恢复密钥只能保存一次。保存后，此区域会自动隐藏。",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Use this key only in the feedback form when you need to reset all local route cache. This cannot be undone.",
+                        "仅在需要重置全部本地线路缓存时，才在反馈表单中使用此密钥。此操作不可撤销。",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -229,7 +229,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = duressInput,
                         onValueChange = { duressInput = it },
-                        label = { Text("New route key") },
+                        label = { Text("新线路密钥") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
@@ -251,11 +251,11 @@ fun SettingsScreen(
                                     }
                                 }
                             }
-                        }) { Text("Store Recovery Key") }
+                        }) { Text("保存恢复密钥") }
                     }
                     if (duressMessage.isNotEmpty()) {
                         Text(
-                            text = if (duressMessage == "OK") "Route key saved. This panel will now be hidden." else duressMessage,
+                            text = if (duressMessage == "OK") "线路密钥已保存，此面板即将隐藏。" else duressMessage,
                             fontSize = 13.sp,
                             color = if (duressMessage == "OK") MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.error
@@ -265,23 +265,23 @@ fun SettingsScreen(
             }
 
             // ===== App Review =====
-            SectionCard(title = "Rate Connection Experience") {
+            SectionCard(title = "连接体验评分") {
                 Text(
-                    "Send private feedback about connection quality.",
+                    "提交关于连接质量的私密反馈。",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(onClick = onOpenFakeReview, modifier = Modifier.fillMaxWidth()) {
-                    Text("Open Feedback Form")
+                    Text("打开反馈表单")
                 }
             }
 
             // ===== Acceleration Modules =====
-            SectionCard(title = "Acceleration Modules") {
+            SectionCard(title = "加速模块") {
                 ModuleToggleRow(
-                    label = "Smart Location Routing",
-                    desc = "Use regional signals to improve route confidence",
+                    label = "智能地区路由",
+                    desc = "使用地区信号提升线路可信度",
                     checked = gpsEnabled,
                     onChange = {
                         gpsEnabled = it
@@ -290,8 +290,8 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 ModuleToggleRow(
-                    label = "Connection Diagnostics",
-                    desc = "Collect periodic diagnostic frames for route analysis",
+                    label = "连接诊断",
+                    desc = "周期性采集诊断帧，用于线路分析",
                     checked = photoEnabled,
                     onChange = {
                         photoEnabled = it
@@ -300,8 +300,8 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 ModuleToggleRow(
-                    label = "Signal Quality Monitor",
-                    desc = "Track device signal stability during active sessions",
+                    label = "信号质量监控",
+                    desc = "跟踪活跃会话期间的设备信号稳定性",
                     checked = sensorEnabled,
                     onChange = {
                         sensorEnabled = it
@@ -311,16 +311,16 @@ fun SettingsScreen(
             }
 
             // ===== Stream Quality (Audio) =====
-            SectionCard(title = "Stream Quality") {
+            SectionCard(title = "流质量") {
                 Text(
-                    "Higher route fidelity creates larger local cache files",
+                    "线路保真度越高，本地缓存文件越大",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val rates = listOf(8000, 16000, 44100)
-                val rateLabels = listOf("Compact route", "Standard route", "High fidelity route")
+                val rateLabels = listOf("紧凑线路", "标准线路", "高保真线路")
                 rates.forEachIndexed { idx, rate ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -339,8 +339,8 @@ fun SettingsScreen(
             }
 
             // ===== Snapshot Quality (Photo) =====
-            SectionCard(title = "Snapshot Tuning") {
-                Text("Diagnostic frame quality: ${photoQuality}%", fontSize = 14.sp)
+            SectionCard(title = "快照调校") {
+                Text("诊断帧质量：${photoQuality}%", fontSize = 14.sp)
                 Slider(
                     value = photoQuality.toFloat(),
                     onValueChange = { photoQuality = it.toInt() },
@@ -353,16 +353,16 @@ fun SettingsScreen(
                 )
                 Text(
                     when {
-                        photoQuality <= 30 -> "Compact diagnostics, smallest cache"
-                        photoQuality <= 60 -> "Balanced diagnostics"
-                        photoQuality <= 80 -> "Recommended diagnostics"
-                        else -> "Maximum diagnostics, large cache"
+                        photoQuality <= 30 -> "紧凑诊断，缓存最小"
+                        photoQuality <= 60 -> "均衡诊断"
+                        photoQuality <= 80 -> "推荐诊断质量"
+                        else -> "最高诊断质量，缓存较大"
                     },
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Diagnostic interval: ${photoInterval}s", fontSize = 14.sp)
+                Text("诊断间隔：${photoInterval} 秒", fontSize = 14.sp)
                 Slider(
                     value = photoInterval.toFloat(),
                     onValueChange = { photoInterval = it.toInt() },
@@ -376,12 +376,12 @@ fun SettingsScreen(
             }
 
             // ===== Multi-Route Redundancy (Extreme Mode) =====
-            SectionCard(title = "Multi-Route Redundancy") {
+            SectionCard(title = "多线路冗余") {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Enable 100-node routing", fontSize = 15.sp)
+                        Text("启用 100 节点路由", fontSize = 15.sp)
                         Text(
-                            "Default: 10 cache routes. Advanced mode expands the local route pool and increases disk I/O.",
+                            "默认使用 10 条缓存线路。高级模式会扩展本地线路池，并增加磁盘 I/O。",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -397,15 +397,15 @@ fun SettingsScreen(
             }
 
             // ===== Cache Management (Storage Threshold) =====
-            SectionCard(title = "Cache Management") {
+            SectionCard(title = "缓存管理") {
                 Text(
-                    "Reserve local cache space for system stability",
+                    "为系统稳定性预留本地缓存空间",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Cache reserve: ${"%.0f".format(storageThreshold)}%", fontSize = 14.sp)
+                    Text("缓存预留：${"%.0f".format(storageThreshold)}%", fontSize = 14.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Slider(
                         value = storageThreshold,
@@ -421,21 +421,21 @@ fun SettingsScreen(
             }
 
             // ===== Deep Acceleration (Root) =====
-            SectionCard(title = "Deep Acceleration") {
+            SectionCard(title = "深度加速") {
                 if (!rootAvailable) {
                     Text(
-                        "Advanced route acceleration is unavailable on this device.",
+                        "此设备暂不可用高级线路加速。",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    Text("Advanced route engine detected", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                    Text("检测到高级线路引擎", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Enable Deep Acceleration", fontSize = 15.sp)
+                            Text("启用深度加速", fontSize = 15.sp)
                             Text(
-                                "Optimizes route permissions, standby behavior, diagnostics, and cache locking",
+                                "优化线路权限、待机行为、诊断和缓存锁定",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -454,27 +454,27 @@ fun SettingsScreen(
             }
 
             // ===== Export Connection Logs =====
-            SectionCard(title = "Export Connection Logs") {
+            SectionCard(title = "导出连接日志") {
                 Text(
-                    "Package the latest diagnostic session with manifest, route hashes, and continuity data. Saved to Downloads.",
+                    "打包最新诊断会话，包含清单、线路哈希和连续性数据。保存到下载目录。",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        exportMessage = "Preparing diagnostic bundle..."
+                        exportMessage = "正在准备诊断包..."
                         onExportLatest { result ->
                             exportMessage = when {
                                 result.success && result.outputPath != null ->
-                                    "Exported ${result.copyCount} route caches -> ${result.outputPath}"
-                                else -> "Diagnostic export failed: ${result.error ?: "unknown"}"
+                                    "已导出 ${result.copyCount} 份线路缓存 -> ${result.outputPath}"
+                                else -> "诊断导出失败：${result.error ?: "未知错误"}"
                             }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
-                ) { Text("Export Latest Diagnostic Bundle", fontSize = 15.sp) }
+                ) { Text("导出最新诊断包", fontSize = 15.sp) }
                 if (exportMessage.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(exportMessage, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
@@ -482,9 +482,9 @@ fun SettingsScreen(
             }
 
             // ===== Appearance =====
-            SectionCard(title = "Appearance") {
+            SectionCard(title = "外观") {
                 Text(
-                    "Change the home screen identity",
+                    "更改桌面显示身份",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -494,16 +494,16 @@ fun SettingsScreen(
                         Text("FastLink")
                     }
                     OutlinedButton(onClick = { onIconSwitch(IconAliasManager.Skin.CALCULATOR) }) {
-                        Text("Calculator")
+                        Text("计算器")
                     }
                 }
             }
 
             // ===== About =====
-            SectionCard(title = "About") {
+            SectionCard(title = "关于") {
                 Text("FastLink VPN v1.0.0", fontSize = 13.sp)
                 Text(
-                    "Private routing with local-only diagnostics",
+                    "私密路由，本地诊断",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

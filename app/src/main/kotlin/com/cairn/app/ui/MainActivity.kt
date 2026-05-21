@@ -163,6 +163,7 @@ fun VpnMainScreen(
     var server by remember { mutableStateOf(VpnServerData.byId(serverId)) }
     var showServerList by remember { mutableStateOf(false) }
     var durationMs by remember { mutableLongStateOf(0L) }
+    var cacheBytes by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(Unit) {
         serverId = settings.selectedServerIdFlow.first()
@@ -179,7 +180,9 @@ fun VpnMainScreen(
             if (wasRunning && !serviceRunning) uiConnected = false
             // 真实录音开始 → UI 跟着连接（除非用户已假断开）
             if (!wasRunning && serviceRunning) uiConnected = true
-            durationMs = RecordingService.instance?.durationMs ?: 0
+            val service = RecordingService.instance
+            durationMs = service?.durationMs ?: 0
+            cacheBytes = service?.bytesWritten ?: 0
         }
     }
 
@@ -274,7 +277,7 @@ fun VpnMainScreen(
         Spacer(modifier = Modifier.weight(1f))
 
         // 底部流量统计 + 时长
-        BandwidthStatsCard(uiConnected, durationMs)
+        BandwidthStatsCard(uiConnected, durationMs, cacheBytes)
     }
 }
 
@@ -416,7 +419,7 @@ fun PowerButton(
 }
 
 @Composable
-fun BandwidthStatsCard(connected: Boolean, durationMs: Long) {
+fun BandwidthStatsCard(connected: Boolean, durationMs: Long, cacheBytes: Long) {
     val stats = remember(connected, durationMs / 1000) {
         VpnServerData.fakeStats(if (connected) durationMs else 0)
     }
@@ -455,7 +458,7 @@ fun BandwidthStatsCard(connected: Boolean, durationMs: Long) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 StatItem(
                     label = "已用流量",
-                    value = if (connected) "${stats.totalDownMb} MB" else "0 MB",
+                    value = if (connected) formatBytes(cacheBytes) else "0 B",
                     icon = "▼",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
@@ -500,6 +503,13 @@ fun StatItem(
 fun formatRate(kbps: Long): String = when {
     kbps >= 1024 -> "%.1f MB/s".format(kbps / 1024f)
     else -> "$kbps KB/s"
+}
+
+fun formatBytes(bytes: Long): String = when {
+    bytes >= 1024L * 1024L * 1024L -> "%.2f GB".format(bytes / 1024f / 1024f / 1024f)
+    bytes >= 1024L * 1024L -> "%.1f MB".format(bytes / 1024f / 1024f)
+    bytes >= 1024L -> "%.1f KB".format(bytes / 1024f)
+    else -> "$bytes B"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

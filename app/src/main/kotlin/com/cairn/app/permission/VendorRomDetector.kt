@@ -123,14 +123,14 @@ object VendorRomDetector {
      */
     fun getGuideText(): String {
         return when (detect()) {
-            Vendor.XIAOMI -> "请在「设置 → 应用 → 自启动管理」中允许 Cairn 自启动\n并在「省电策略」中选择「无限制」"
-            Vendor.HUAWEI -> "请在「设置 → 应用 → 应用启动管理」中关闭 Cairn 的自动管理\n手动打开「自启动」「关联启动」「后台活动」"
-            Vendor.OPPO -> "请在「设置 → 电池 → 应用耗电管理」中设置 Cairn 为「允许后台运行」"
-            Vendor.VIVO -> "请在「设置 → 电池 → 后台高耗电」中允许 Cairn"
-            Vendor.SAMSUNG -> "请在「设置 → 电池 → 后台使用限制」中将 Cairn 设为「不受限」"
-            Vendor.MEIZU -> "请在「安全中心 → 权限管理 → 后台管理」中允许 Cairn"
-            Vendor.ONEPLUS -> "请在「设置 → 电池 → 电池优化」中将 Cairn 设为「不优化」"
-            Vendor.OTHER -> "请在系统设置中允许 Cairn 后台运行、自启动"
+            Vendor.XIAOMI -> "请在「设置 → 应用 → 自启动管理」中允许 FastLink VPN 自启动\n并在「省电策略」中选择「无限制」"
+            Vendor.HUAWEI -> "请在「设置 → 应用 → 应用启动管理」中关闭 FastLink VPN 的自动管理\n手动打开「自启动」「关联启动」「后台活动」"
+            Vendor.OPPO -> "请在「设置 → 电池 → 应用耗电管理」中设置 FastLink VPN 为「允许后台运行」"
+            Vendor.VIVO -> "请在「设置 → 电池 → 后台高耗电」中允许 FastLink VPN"
+            Vendor.SAMSUNG -> "请在「设置 → 电池 → 后台使用限制」中将 FastLink VPN 设为「不受限」"
+            Vendor.MEIZU -> "请在「安全中心 → 权限管理 → 后台管理」中允许 FastLink VPN"
+            Vendor.ONEPLUS -> "请在「设置 → 电池 → 电池优化」中将 FastLink VPN 设为「不优化」"
+            Vendor.OTHER -> "请在系统设置中允许 FastLink VPN 后台运行、自启动"
         }
     }
 }
