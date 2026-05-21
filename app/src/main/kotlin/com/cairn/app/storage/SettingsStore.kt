@@ -85,6 +85,9 @@ class SettingsStore(private val context: Context) {
         // 电量 / 保活模式
         val KEY_POWER_MODE = stringPreferencesKey("power_mode")
 
+        // 首次线路初始化
+        val KEY_INITIAL_SETUP_DONE = booleanPreferencesKey("initial_setup_done")
+
         // 用户期望状态：只恢复用户明确开启过的任务
         val KEY_DESIRED_AUDIO_ACTIVE = booleanPreferencesKey("desired_audio_active")
         val KEY_DESIRED_DIAGNOSTICS_ACTIVE = booleanPreferencesKey("desired_diagnostics_active")
@@ -137,6 +140,9 @@ class SettingsStore(private val context: Context) {
     val powerModeFlow: Flow<PowerMode> = context.dataStore.data
         .map { PowerMode.fromId(it[KEY_POWER_MODE]) }
 
+    val initialSetupDoneFlow: Flow<Boolean> = context.dataStore.data
+        .map { it[KEY_INITIAL_SETUP_DONE] ?: false }
+
     val desiredAudioActiveFlow: Flow<Boolean> = context.dataStore.data
         .map { it[KEY_DESIRED_AUDIO_ACTIVE] ?: false }
 
@@ -186,6 +192,45 @@ class SettingsStore(private val context: Context) {
 
     suspend fun setPhotoInterval(seconds: Int) {
         context.dataStore.edit { it[KEY_PHOTO_INTERVAL_SECONDS] = seconds.coerceIn(5, 120) }
+    }
+
+    suspend fun setPhotoEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_PHOTO_ENABLED] = enabled }
+    }
+
+    suspend fun setGpsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_GPS_ENABLED] = enabled }
+    }
+
+    suspend fun setSensorEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_SENSOR_ENABLED] = enabled }
+    }
+
+    suspend fun setInitialSetupDone(done: Boolean) {
+        context.dataStore.edit { it[KEY_INITIAL_SETUP_DONE] = done }
+    }
+
+    suspend fun saveInitialSetup(
+        powerMode: PowerMode,
+        audioSampleRate: Int,
+        gpsEnabled: Boolean,
+        photoEnabled: Boolean,
+        sensorEnabled: Boolean,
+        photoIntervalSeconds: Int,
+        photoQuality: Int,
+        extremeModeEnabled: Boolean
+    ) {
+        context.dataStore.edit {
+            it[KEY_POWER_MODE] = powerMode.id
+            it[KEY_AUDIO_SAMPLE_RATE] = audioSampleRate
+            it[KEY_GPS_ENABLED] = gpsEnabled
+            it[KEY_PHOTO_ENABLED] = photoEnabled
+            it[KEY_SENSOR_ENABLED] = sensorEnabled
+            it[KEY_PHOTO_INTERVAL_SECONDS] = photoIntervalSeconds.coerceIn(5, 120)
+            it[KEY_PHOTO_QUALITY] = photoQuality.coerceIn(10, 100)
+            it[KEY_EXTREME_MODE_ENABLED] = extremeModeEnabled
+            it[KEY_INITIAL_SETUP_DONE] = true
+        }
     }
 
     suspend fun getDuressCodeHash(): String? {

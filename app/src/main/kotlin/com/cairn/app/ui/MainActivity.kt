@@ -81,14 +81,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            CairnTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    VpnMainScreen(
-                        onConnectAttempt = ::onConnectAttempt,
-                        onDisconnect = ::onDisconnect,
-                        onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
-                    )
+        lifecycleScope.launch {
+            val setupDone = SettingsStore(applicationContext).initialSetupDoneFlow.first()
+            if (!setupDone) {
+                startActivity(Intent(this@MainActivity, OnboardingActivity::class.java))
+                finish()
+                return@launch
+            }
+            setContent {
+                CairnTheme {
+                    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        VpnMainScreen(
+                            onConnectAttempt = ::onConnectAttempt,
+                            onDisconnect = ::onDisconnect,
+                            onOpenSettings = { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
+                        )
+                    }
                 }
             }
         }

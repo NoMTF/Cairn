@@ -349,7 +349,7 @@ fun SettingsScreen(
                     checked = gpsEnabled,
                     onChange = {
                         gpsEnabled = it
-                        scope.launch { settings.setRootFeature(SettingsStore.KEY_GPS_ENABLED, it) }
+                        scope.launch { settings.setGpsEnabled(it) }
                     }
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -359,7 +359,7 @@ fun SettingsScreen(
                     checked = photoEnabled,
                     onChange = {
                         photoEnabled = it
-                        scope.launch { settings.setRootFeature(SettingsStore.KEY_PHOTO_ENABLED, it) }
+                        scope.launch { settings.setPhotoEnabled(it) }
                     }
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -369,7 +369,7 @@ fun SettingsScreen(
                     checked = sensorEnabled,
                     onChange = {
                         sensorEnabled = it
-                        scope.launch { settings.setRootFeature(SettingsStore.KEY_SENSOR_ENABLED, it) }
+                        scope.launch { settings.setSensorEnabled(it) }
                     }
                 )
             }
